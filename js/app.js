@@ -1,4 +1,9 @@
 /* ============================= STATE ============================= */
+function defaultPerformance(){
+  const p = {};
+  DOMAINS.forEach(d=>{ p[d.key] = { history: {} }; });
+  return p;
+}
 const DEFAULT_STATE = {
   user: null,               // { name }
   goal: null,
@@ -10,7 +15,8 @@ const DEFAULT_STATE = {
   journal: [],               // [{id, date, ts, mood, text}]
   scoreHistory: {},          // { 'YYYY-MM-DD': {total, breakdown} }
   streak: 0,
-  chatLog: []                // [{who:'ai'|'user', text, ts}]
+  chatLog: [],               // [{who:'ai'|'user', text, ts}]
+  performance: defaultPerformance() // { [domainKey]: { history: {'YYYY-MM-DD': true} } }
 };
 let state = loadState();
 function loadState(){
@@ -22,6 +28,9 @@ function loadState(){
       Object.assign(merged, parsed);
       merged.water = Object.assign({}, DEFAULT_STATE.water, parsed.water);
       merged.ritual = Object.assign({history:{}}, parsed.ritual);
+      const perf = defaultPerformance();
+      DOMAINS.forEach(d=>{ perf[d.key] = Object.assign({history:{}}, parsed.performance && parsed.performance[d.key]); });
+      merged.performance = perf;
       return merged;
     }
   }catch(e){}
@@ -62,6 +71,9 @@ function applyLanguage(){
   renderChat();
   if(document.getElementById('ritualOverlay') && !document.getElementById('ritualOverlay').classList.contains('hidden')){
     refreshRitualStepText();
+  }
+  if(currentDomainKey && document.getElementById('screen-domain').classList.contains('active')){
+    renderDomainScreen();
   }
 }
 
@@ -133,6 +145,16 @@ function ensureStars(){
   }
 }
 
+/* ============================= REVEAL ANIMATION ============================= */
+function staggerReveal(selector, root){
+  const els = (root||document).querySelectorAll(selector);
+  els.forEach((el,i)=>{
+    el.classList.add('reveal');
+    el.classList.remove('in');
+    setTimeout(()=> el.classList.add('in'), 40 + i*55);
+  });
+}
+
 /* ============================= NAV ============================= */
 document.querySelectorAll('.nav-btn').forEach(btn=> btn.addEventListener('click', ()=> showScreen(btn.dataset.screen)));
 function showScreen(name){
@@ -140,9 +162,13 @@ function showScreen(name){
   document.getElementById('screen-'+name).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
   document.getElementById('screens').scrollTop = 0;
+  window.scrollTo(0, 0);
   if(name==='journal') renderJournal();
   if(name==='memory'){ renderMemoryChips(); renderChat(); }
   if(name==='insights') renderInsights();
+  if(name==='home') staggerReveal('.card, .domain-card', document.getElementById('screen-home'));
+  if(name==='journal') staggerReveal('.journal-entry', document.getElementById('journalList'));
+  if(name==='insights') staggerReveal('.rh-row', document.getElementById('ritualHistoryList'));
 }
 
 /* ============================= VIEW MODAL ============================= */
@@ -164,24 +190,57 @@ function calcStreak(){
   }
   return streak;
 }
+/* ============================= PERFORMANCE DOMAINS ============================= */
+function domainCompletedCount(key){ return Object.keys(state.performance[key].history).length; }
+function domainDoneToday(key){ return !!state.performance[key].history[todayKey()]; }
+function domainStreak(key){
+  const hist = state.performance[key].history;
+  let streak = 0;
+  let cursor = new Date();
+  if(!hist[todayKey()]) cursor.setDate(cursor.getDate()-1);
+  while(true){
+    const k = cursor.toISOString().slice(0,10);
+    if(hist[k]){ streak++; cursor.setDate(cursor.getDate()-1); } else break;
+  }
+  return streak;
+}
+function domainLessonIndex(key){ return domainCompletedCount(key) % LESSONS[key].length; }
+function domainLesson(key){ return LESSONS[key][domainLessonIndex(key)]; }
+function domainJustCycled(key){
+  const count = domainCompletedCount(key);
+  return count > 0 && count % LESSONS[key].length === 0;
+}
+function markDomainDone(key){
+  if(domainDoneToday(key)) return;
+  state.performance[key].history[todayKey()] = true;
+  saveState();
+  recalcLifeScore();
+}
+
+const LIFE_SCORE_MAXES = {ritual:20,hydration:10,journal:10,streak:10,mood:10,sleep:10,nutrition:10,movement:10,nervous:10};
+function factorLabel(key){
+  return DOMAINS.some(d=>d.key===key) ? t('dom_'+key+'_name') : t('factor_'+key);
+}
 function recalcLifeScore(){
   const dateStr = todayKey();
   const ritualEntry = state.ritual.history[dateStr];
-  const ritualPts = ritualEntry ? Math.round(15 + ritualEntry.energy*3) : 0;
-  const hydrationPts = Math.round(Math.min(state.water.count/state.waterGoal, 1) * 20);
+  const ritualPts = ritualEntry ? Math.round(10 + ritualEntry.energy*2) : 0;
+  const hydrationPts = Math.round(Math.min(state.water.count/state.waterGoal, 1) * 10);
   const journalToday = state.journal.some(e=>e.date===dateStr);
-  const journalPts = journalToday ? 20 : 0;
+  const journalPts = journalToday ? 10 : 0;
   const streak = calcStreak();
-  const streakPts = Math.round(Math.min(streak,10)/10*15);
+  const streakPts = Math.round(Math.min(streak,10)/10*10);
   const recentEnergies=[];
   for(let i=0;i<7 && recentEnergies.length<3;i++){
     const e = state.ritual.history[dateKeyOffset(-i)];
     if(e) recentEnergies.push(e.energy);
   }
   const moodAvg = recentEnergies.length ? recentEnergies.reduce((a,b)=>a+b,0)/recentEnergies.length : 2.5;
-  const moodPts = Math.round(moodAvg/5*15);
-  const total = ritualPts+hydrationPts+journalPts+streakPts+moodPts;
-  state.scoreHistory[dateStr] = { total, breakdown:{ritual:ritualPts,hydration:hydrationPts,journal:journalPts,streak:streakPts,mood:moodPts} };
+  const moodPts = Math.round(moodAvg/5*10);
+  const breakdown = {ritual:ritualPts,hydration:hydrationPts,journal:journalPts,streak:streakPts,mood:moodPts};
+  DOMAINS.forEach(d=>{ breakdown[d.key] = domainDoneToday(d.key) ? 10 : 0; });
+  const total = Object.values(breakdown).reduce((a,b)=>a+b,0);
+  state.scoreHistory[dateStr] = { total, breakdown };
   state.streak = streak;
   saveState();
 }
@@ -218,6 +277,7 @@ function renderHome(){
 
   renderWaterRow();
   renderWeekBars('weekBars', 7);
+  renderPerformanceGrid();
 }
 document.getElementById('ritualCta').addEventListener('click', ()=>{
   const entry = state.ritual.history[todayKey()];
@@ -277,6 +337,87 @@ function renderWeekBars(elId, days){
   }
 }
 
+/* ============================= PERFORMANCE UI ============================= */
+function hexToRgba(hex, alpha){
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function domainAccentPale(d){ return state.dark ? hexToRgba(d.accent, 0.22) : d.accentPale; }
+function renderPerformanceGrid(){
+  const grid = document.getElementById('performanceGrid'); if(!grid) return;
+  grid.innerHTML = DOMAINS.map(d=>{
+    const done = domainDoneToday(d.key);
+    const count = domainCompletedCount(d.key);
+    return `
+      <button class="domain-card" data-domain="${d.key}" style="--acc:${d.accent};--acc-pale:${domainAccentPale(d)}">
+        <span class="domain-card-emoji">${d.emoji}</span>
+        <span class="domain-card-name">${t('dom_'+d.key+'_name')}</span>
+        <span class="domain-card-tag">${t('dom_'+d.key+'_tag')}</span>
+        <span class="domain-card-status ${done?'done':''}">${done ? '✓' : t('day_n')(count+1)}</span>
+      </button>`;
+  }).join('');
+  grid.querySelectorAll('.domain-card').forEach(card=>{
+    card.addEventListener('click', ()=> openDomainScreen(card.dataset.domain));
+  });
+}
+
+let currentDomainKey = null;
+function openDomainScreen(key){
+  currentDomainKey = key;
+  renderDomainScreen();
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-domain').classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.screen==='home'));
+  document.getElementById('screens').scrollTop = 0;
+  window.scrollTo(0, 0);
+  staggerReveal('.lesson-card', document.getElementById('screen-domain'));
+}
+function renderDomainScreen(){
+  if(!currentDomainKey) return;
+  const key = currentDomainKey;
+  const d = DOMAINS.find(x=>x.key===key);
+  const lesson = domainLesson(key);
+  const count = domainCompletedCount(key);
+  const streak = domainStreak(key);
+  const done = domainDoneToday(key);
+  const screen = document.getElementById('screen-domain');
+  screen.style.setProperty('--acc', d.accent);
+  screen.style.setProperty('--acc-pale', domainAccentPale(d));
+  document.getElementById('domainEmoji').textContent = d.emoji;
+  document.getElementById('domainName').textContent = t('dom_'+key+'_name');
+  document.getElementById('domainTag').textContent = t('dom_'+key+'_tag');
+  document.getElementById('domainDayBadge').textContent = t('day_n')(count+1);
+  document.getElementById('domainStreakBadge').textContent = streak>=2 ? `🔥 ${t('streak_days')(streak)}` : '';
+  document.getElementById('domainActionText').textContent = lesson.action[lang];
+  document.getElementById('domainWhyText').textContent = lesson.why[lang];
+  document.getElementById('domainPositiveText').textContent = lesson.positive[lang];
+  document.getElementById('domainNegativeText').textContent = lesson.negative[lang];
+  const btn = document.getElementById('domainDoneBtn');
+  btn.textContent = done ? t('domain_done_today') : t('domain_mark_done');
+  btn.classList.toggle('done', done);
+  btn.disabled = done;
+  const cycleNote = document.getElementById('domainCycleNote');
+  cycleNote.style.display = domainJustCycled(key) ? 'block' : 'none';
+  cycleNote.textContent = t('domain_cycle_note');
+  const dotsWrap = document.getElementById('domainDots');
+  dotsWrap.innerHTML='';
+  for(let i=6;i>=0;i--){
+    const k = dateKeyOffset(-i);
+    const on = !!state.performance[key].history[k];
+    const dot = document.createElement('span');
+    dot.className = 'domain-dot' + (on?' on':'') + (i===0?' today':'');
+    dotsWrap.appendChild(dot);
+  }
+}
+document.getElementById('domainBack').addEventListener('click', ()=> showScreen('home'));
+document.getElementById('domainDoneBtn').addEventListener('click', ()=>{
+  if(!currentDomainKey) return;
+  markDomainDone(currentDomainKey);
+  renderDomainScreen();
+  renderHome();
+});
+
 /* ============================= INSIGHTS ============================= */
 function renderInsights(){
   const dateStr = todayKey();
@@ -285,11 +426,10 @@ function renderInsights(){
     ? `نقاطك اليوم ${today.total} من 100.`
     : `Your score today is ${today.total} out of 100.`;
 
-  const maxes = {ritual:30,hydration:20,journal:20,streak:15,mood:15};
   const card = document.getElementById('breakdownCard');
-  card.innerHTML = Object.keys(maxes).map(k=>{
-    const val = today.breakdown[k]||0, max=maxes[k];
-    return `<div class="bd-row"><span class="bd-label">${t('factor_'+k)}</span><span class="bd-track"><i class="bd-fill" style="width:${Math.round(val/max*100)}%"></i></span><span class="bd-val">${val}/${max}</span></div>`;
+  card.innerHTML = Object.keys(LIFE_SCORE_MAXES).map(k=>{
+    const val = today.breakdown[k]||0, max=LIFE_SCORE_MAXES[k];
+    return `<div class="bd-row"><span class="bd-label">${factorLabel(k)}</span><span class="bd-track"><i class="bd-fill" style="width:${Math.round(val/max*100)}%"></i></span><span class="bd-val">${val}/${max}</span></div>`;
   }).join('');
 
   renderWeekBars('weekBars2', 14);
@@ -676,6 +816,8 @@ document.getElementById('langToggle').addEventListener('click', ()=> setLang(lan
 document.getElementById('langSeg').querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=> setLang(b.dataset.lang)));
 document.getElementById('darkToggle').addEventListener('click', ()=>{
   state.dark=!state.dark; saveState(); document.body.classList.toggle('dark', state.dark); renderSettingsUI();
+  renderPerformanceGrid();
+  if(currentDomainKey && document.getElementById('screen-domain').classList.contains('active')) renderDomainScreen();
 });
 document.getElementById('waterGoalSeg').querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=>{
   state.waterGoal = parseInt(b.dataset.val,10);
@@ -712,6 +854,7 @@ function bootApp(){
     document.getElementById('onboardOverlay').classList.add('hidden');
     maybeShowRitual();
   }
+  staggerReveal('.card, .domain-card', document.getElementById('screen-home'));
   setInterval(initHero, 5*60*1000);
 }
 bootApp();

@@ -1,9 +1,10 @@
-const CACHE_NAME = 'morning-os-v1';
+const CACHE_NAME = 'morning-os-v2';
 const APP_SHELL = [
   './',
   './index.html',
   './css/style.css',
   './js/i18n.js',
+  './js/lessons.js',
   './js/app.js',
   './manifest.webmanifest',
   './icons/icon.svg',

@@ -16,10 +16,18 @@ Headspace, and WHOOP — glassmorphism cards over an animated sunrise/day/night 
 - **AI Memory** — an on-device, rule-based reflection companion. It notices
   patterns (streaks, recurring journal keywords, mood trends) and chats using
   local templates — nothing is sent to a server.
+- **Performance** — four standalone daily programs (Sleep, Nutrition, Movement,
+  Nervous System), each its own screen. Every day surfaces one lesson from a
+  9-step curriculum that deepens tier by tier (foundational → building →
+  advanced) as the domain's "Day N" count grows — action, the physiological
+  "why," the realistic upside of keeping it up, and the realistic cost of
+  skipping it. Progress is tracked with a 7-day dot history and a per-domain
+  streak, and completing each domain feeds into the Life Score.
 
-All data (ritual history, journal entries, chat log, settings) is stored only in
-the browser's `localStorage`. There is no backend, no accounts, and no network
-calls other than loading the Google Fonts stylesheet.
+All data (ritual history, journal entries, chat log, performance history,
+settings) is stored only in the browser's `localStorage`. There is no backend,
+no accounts, and no network calls other than loading the Google Fonts
+stylesheet.
 
 ## Running locally
 
@@ -44,7 +52,8 @@ caches the app shell for offline use. Installable on desktop and mobile
 index.html              markup + all screens
 css/style.css            design system (colors, hero animation, cards, RTL rules)
 js/i18n.js                Arabic/English dictionary + t() helper
-js/app.js                 state, ritual flow, life score, journal, AI memory, nav
+js/lessons.js             Performance curriculum content (4 domains x 9 lessons, EN/AR)
+js/app.js                 state, ritual flow, life score, journal, AI memory, performance, nav
 manifest.webmanifest      PWA manifest
 sw.js                     offline service worker
 icons/                    app icons (svg + png, incl. maskable + apple-touch)
