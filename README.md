@@ -2,8 +2,11 @@
 
 A calm daily wellness PWA — bilingual Arabic (RTL) / English (LTR) with instant switching.
 
-Design language: olive green, warm cream, and morning gold, inspired by Apple, Calm,
-Headspace, and WHOOP — glassmorphism cards over an animated sunrise/day/night hero.
+Design language: a bold, colorful Bento-grid dashboard — a warm cream base with
+saturated flat card colors (mustard, sage, blush, lavender, coral), heavy Manrope/
+Tajawal display type, pill buttons, and a floating dark bottom nav. The home screen's
+hero card still shifts color with the time of day (mustard mornings, sage afternoons,
+coral evenings, lavender nights).
 
 ## Features
 

@@ -15,7 +15,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -114,68 +114,59 @@
 
     <!-- HOME -->
     <section class="screen active" id="screen-home">
-      <div class="hero" id="heroBox">
-        <div class="hero-sky" id="heroSky"></div>
-        <div class="hero-rays" id="heroRays"></div>
-        <div class="hero-glow"></div>
-        <div class="hero-stars" id="heroStars"></div>
-        <div class="moon" id="heroMoon" style="display:none;"></div>
-        <div class="sun" id="heroSun"></div>
-        <div class="cloud c1"><svg viewBox="0 0 100 50" fill="#fff"><ellipse cx="30" cy="30" rx="28" ry="16"/><ellipse cx="55" cy="22" rx="22" ry="18"/><ellipse cx="72" cy="32" rx="20" ry="14"/></svg></div>
-        <div class="cloud c2"><svg viewBox="0 0 100 50" fill="#fff"><ellipse cx="30" cy="30" rx="28" ry="16"/><ellipse cx="55" cy="22" rx="22" ry="18"/><ellipse cx="72" cy="32" rx="20" ry="14"/></svg></div>
-        <div class="bird"><svg viewBox="0 0 24 12" stroke="#3A2A18" stroke-width="1.5" fill="none"><path d="M0 6 Q6 0 12 6 Q18 0 24 6"/></svg></div>
-        <div class="bird b2"><svg viewBox="0 0 24 12" stroke="#3A2A18" stroke-width="1.5" fill="none"><path d="M0 6 Q6 0 12 6 Q18 0 24 6"/></svg></div>
-        <div id="particleField"></div>
-        <div class="leafrow" id="leafRow"></div>
-        <div class="hero-content">
-          <div class="hero-eyebrow" id="heroEyebrow"></div>
-          <h1 class="hero-greeting" id="heroGreeting"></h1>
-          <p class="hero-sub" id="heroSub"></p>
-        </div>
-      </div>
+      <div class="section" style="padding-top:6px;">
 
-      <div class="section">
-        <div class="card" id="ritualCta">
-          <div class="tip-card">
-            <div class="tip-icon" id="ritualCtaIcon">☀️</div>
-            <div class="tip-text">
-              <b id="ritualCtaTitle"></b>
-              <p id="ritualCtaSub"></p>
+        <div class="bento-grid">
+          <!-- HERO -->
+          <div class="bento full bento-mustard" id="heroBento">
+            <div class="bento-icon num" id="heroIcon" style="font-size:20px;">☀️</div>
+            <div class="hero-eyebrow" id="heroEyebrow" style="position:relative;z-index:1;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;opacity:.72;margin-top:14px;"></div>
+            <h1 class="bento-title" id="heroGreeting" style="font-size:23px;margin-top:4px;"></h1>
+            <p class="bento-sub" id="heroSub" style="font-size:12.5px;max-width:90%;"></p>
+            <div style="display:flex;align-items:center;gap:16px;margin-top:18px;position:relative;z-index:1;">
+              <div class="ring ring-hero on-color" id="scoreRing" style="--pct:0"><div class="ring-inner"><b id="scoreVal" class="num">–</b><span data-i18n="out_of_100">/100</span></div></div>
+              <div class="cal-strip" id="calStrip" style="flex:1;"></div>
+            </div>
+          </div>
+
+          <!-- RITUAL CTA -->
+          <div class="bento bento-coral clickable" id="ritualCta">
+            <div class="bento-icon" id="ritualCtaIcon">☀️</div>
+            <div class="bento-title" id="ritualCtaTitle"></div>
+            <div class="bento-sub" id="ritualCtaSub"></div>
+          </div>
+
+          <!-- HYDRATION -->
+          <div class="bento bento-sage" id="hydrationBento">
+            <div class="bento-icon">💧</div>
+            <div class="bento-title" data-i18n="hydration">Hydration</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;position:relative;z-index:1;">
+              <button class="water-btn" id="waterMinus" style="width:32px;height:32px;font-size:15px;background:rgba(255,255,255,.55);">−</button>
+              <div style="text-align:center;"><b class="num" id="waterCount" style="font-size:19px;">0</b><div style="font-size:10px;" id="waterGoalLabel"></div></div>
+              <button class="water-btn" id="waterPlus" style="width:32px;height:32px;font-size:15px;background:rgba(255,255,255,.55);">+</button>
             </div>
           </div>
         </div>
 
-        <div class="section-title"><span data-i18n="life_score">Life Score</span></div>
-        <div class="card score-row">
-          <div class="ring" id="scoreRing" style="--pct:0"><div class="ring-inner"><b id="scoreVal">–</b><span data-i18n="out_of_100">/ 100</span></div></div>
-          <div class="grid3" style="flex:1;">
-            <div class="mini-stat"><div class="val" id="statMood">–</div><div class="lbl" data-i18n="stat_mood">Mood</div></div>
-            <div class="mini-stat"><div class="val" id="statWater">0/8</div><div class="lbl" data-i18n="stat_water">Water</div></div>
-            <div class="mini-stat"><div class="val" id="statStreak">0</div><div class="lbl" data-i18n="stat_streak">Streak</div></div>
-          </div>
+        <div class="stat-chip-row" style="margin-top:12px;">
+          <div class="stat-chip"><div class="sc-val" id="statMood">–</div><div class="sc-lbl" data-i18n="stat_mood">Mood</div></div>
+          <div class="stat-chip"><div class="sc-val num" id="statWater">0/8</div><div class="sc-lbl" data-i18n="stat_water">Water</div></div>
+          <div class="stat-chip"><div class="sc-val num" id="statStreak">0</div><div class="sc-lbl" data-i18n="stat_streak">Streak</div></div>
         </div>
-        <div class="card" id="scoreWhyCard" style="margin-top:10px;display:none;">
+
+        <div class="card" id="scoreWhyCard" style="margin-top:12px;display:none;">
           <p id="scoreWhyText" style="margin:0;font-size:12.5px;color:var(--ink-soft);line-height:1.6;"></p>
-        </div>
-
-        <div class="section-title" style="margin-top:22px;"><span data-i18n="hydration">Hydration</span></div>
-        <div class="card">
-          <div class="water-controls">
-            <button class="water-btn" id="waterMinus">−</button>
-            <div style="text-align:center;flex:1;">
-              <div class="water-row" id="waterRow"></div>
-              <div style="font-size:11.5px;color:var(--ink-faint);margin-top:8px;"><b id="waterCount">0</b> <span id="waterGoalLabel"></span></div>
-            </div>
-            <button class="water-btn" id="waterPlus">+</button>
-          </div>
         </div>
 
         <div class="section-title" style="margin-top:22px;"><span data-i18n="perf_section_title">Performance</span></div>
         <p class="section-lede" data-i18n="perf_section_sub">Four daily practices that build on each other, day by day.</p>
-        <div class="domain-grid" id="performanceGrid"></div>
+        <div class="bento-grid" id="performanceGrid"></div>
 
         <div class="section-title" style="margin-top:22px;"><span data-i18n="this_week">This Week</span></div>
-        <div class="card"><div class="week-bars" id="weekBars"></div></div>
+        <div class="bento full bento-lavender">
+          <div class="bento-icon">📈</div>
+          <svg class="sparkline" id="weekSparkline" viewBox="0 0 300 60" preserveAspectRatio="none"></svg>
+        </div>
       </div>
     </section>
 
@@ -231,9 +222,12 @@
         <h1 class="display" data-i18n="nav_journal" style="font-size:22px;margin:0 0 4px;"></h1>
         <p style="color:var(--ink-soft);font-size:13px;margin:0 0 16px;" data-i18n="journal_sub">A private place to empty your mind. Nothing here leaves your device.</p>
 
-        <div class="mood-row" id="journalMoodRow"></div>
-        <textarea id="journalInput" class="jq-input" data-i18n-ph="journal_ph" placeholder="What's on your mind…" style="min-height:130px;margin-top:12px;"></textarea>
-        <button class="pill-btn gold" id="journalSaveBtn" style="margin-top:12px;" data-i18n="journal_save">Save entry</button>
+        <div class="journal-hero">
+          <div class="mood-row" id="journalMoodRow"></div>
+          <textarea id="journalInput" class="jq-input" data-i18n-ph="journal_ph" placeholder="What's on your mind…" style="min-height:120px;margin-top:12px;border-color:transparent;"></textarea>
+          <div class="suggest-row" id="journalSuggestRow" style="margin-top:10px;"></div>
+          <button class="pill-btn" id="journalSaveBtn" style="margin-top:12px;background:var(--btn-bg);color:var(--btn-ink);" data-i18n="journal_save">Save entry</button>
+        </div>
 
         <div class="section-title" style="margin-top:26px;"><span data-i18n="journal_entries">Your entries</span><span id="journalCount" style="font-weight:600;color:var(--ink-faint);"></span></div>
         <input type="text" id="journalSearch" class="search-input" data-i18n-ph="journal_search_ph" placeholder="Search your entries…">
@@ -264,18 +258,29 @@
         <h1 class="display" data-i18n="nav_insights" style="font-size:22px;margin:0 0 4px;"></h1>
         <p style="color:var(--ink-soft);font-size:13px;margin:0 0 16px;" data-i18n="insights_sub">How your Life Score is built, day by day.</p>
 
-        <div class="card score-row">
-          <div class="ring" id="scoreRing2" style="--pct:0"><div class="ring-inner"><b id="scoreVal2">–</b><span data-i18n="out_of_100">/ 100</span></div></div>
-          <div class="tip-text" style="flex:1;">
-            <b data-i18n="insights_today">Today's score</b>
-            <p id="insightsTodayText" style="margin:2px 0 0;"></p>
+        <div class="bento bento-lavender">
+          <div class="ring ring-hero on-color" id="scoreRing2" style="--pct:0"><div class="ring-inner"><b id="scoreVal2" class="num">–</b><span data-i18n="out_of_100">/100</span></div></div>
+          <div style="margin-top:14px;position:relative;z-index:1;">
+            <b class="bento-title" style="font-size:14px;" data-i18n="insights_today">Today's score</b>
+            <p class="bento-sub" id="insightsTodayText" style="margin:4px 0 0;"></p>
           </div>
+        </div>
+
+        <div class="stat-chip-row" style="margin-top:16px;">
+          <div class="stat-chip"><div class="sc-val num" id="statAvg">–</div><div class="sc-lbl" data-i18n="stat_avg">7-day avg</div></div>
+          <div class="stat-chip"><div class="sc-val num" id="statBest">–</div><div class="sc-lbl" data-i18n="stat_best">Best day</div></div>
+          <div class="stat-chip"><div class="sc-val num" id="statLongStreak">–</div><div class="sc-lbl" data-i18n="stat_long_streak">Best streak</div></div>
         </div>
 
         <div class="section-title" style="margin-top:22px;"><span data-i18n="score_breakdown">Breakdown</span></div>
         <div class="card" id="breakdownCard"></div>
 
-        <div class="section-title" style="margin-top:22px;"><span data-i18n="last_14_days">Last 14 Days</span></div>
+        <div class="section-title" style="margin-top:22px;"><span data-i18n="score_history">History</span></div>
+        <div class="tabs" id="historyTabs">
+          <button data-days="7" class="active" data-i18n="tab_week">Week</button>
+          <button data-days="14" data-i18n="tab_2weeks">2 Weeks</button>
+          <button data-days="30" data-i18n="tab_month">Month</button>
+        </div>
         <div class="card"><div class="week-bars" id="weekBars2" style="height:110px;"></div></div>
 
         <div class="section-title" style="margin-top:22px;"><span data-i18n="ritual_history">Ritual History</span></div>

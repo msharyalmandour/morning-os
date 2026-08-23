@@ -85,64 +85,24 @@ function getTimePhase(){
   if(h<18) return 'afternoon';
   return 'evening';
 }
-let heroDecorated=false, starsDone=false;
+const HERO_PHASE_STYLE = {
+  morning:{ bento:'bento-mustard', icon:'☀️' },
+  afternoon:{ bento:'bento-sage', icon:'🌤️' },
+  evening:{ bento:'bento-coral', icon:'🌇' },
+  night:{ bento:'bento-lavender', icon:'🌙' }
+};
 function initHero(){
   const phase = getTimePhase();
   const name = state.user ? state.user.name : (lang==='ar'?'صديقي':'friend');
-  const sky=document.getElementById('heroSky'), eyebrow=document.getElementById('heroEyebrow'),
-        greeting=document.getElementById('heroGreeting'), sub=document.getElementById('heroSub'),
-        sun=document.getElementById('heroSun'), moon=document.getElementById('heroMoon'), rays=document.getElementById('heroRays');
-  const map = {
-    morning:{sky:'sky-morning', pos:{top:'56px', insetInlineStart:'26px'}},
-    afternoon:{sky:'sky-afternoon', pos:{top:'22px', insetInlineStart:'50%'}},
-    evening:{sky:'sky-evening', pos:{top:'34px', insetInlineEnd:'30px'}},
-    night:{sky:'sky-night', pos:{top:'30px', insetInlineEnd:'34px'}}
-  };
-  const m = map[phase];
-  sky.className = 'hero-sky ' + m.sky;
+  const bento=document.getElementById('heroBento'), icon=document.getElementById('heroIcon'),
+        eyebrow=document.getElementById('heroEyebrow'), greeting=document.getElementById('heroGreeting'),
+        sub=document.getElementById('heroSub');
+  const style = HERO_PHASE_STYLE[phase];
+  bento.className = 'bento full clickable ' + style.bento;
+  icon.textContent = style.icon;
   eyebrow.textContent = t('greet_'+phase+'_eyebrow');
   greeting.textContent = t('greet_'+phase+'_title_name')(name);
   sub.textContent = t('greet_'+phase+'_sub');
-
-  if(phase==='night'){
-    sun.style.display='none'; moon.style.display='block';
-    Object.assign(moon.style, {top:'',insetInlineEnd:'',insetInlineStart:''}, m.pos);
-    rays.classList.add('dim');
-    ensureStars();
-  } else {
-    sun.style.display='block'; moon.style.display='none'; rays.classList.remove('dim');
-    Object.assign(sun.style, {top:'',insetInlineStart:'',insetInlineEnd:''}, m.pos);
-    if(phase==='evening'){
-      sun.style.background='radial-gradient(circle at 35% 35%,#F4E9D8,#E8DCC0 60%,transparent 100%)';
-      sun.style.boxShadow='0 0 50px 16px rgba(230,220,190,0.35)'; sun.style.width='64px'; sun.style.height='64px';
-    } else { sun.style.background=''; sun.style.boxShadow=''; sun.style.width='110px'; sun.style.height='110px'; }
-  }
-
-  if(!heroDecorated){
-    heroDecorated=true;
-    const field=document.getElementById('particleField');
-    for(let i=0;i<12;i++){
-      const p=document.createElement('div'); p.className='particle';
-      p.style.left=(Math.random()*100)+'%'; p.style.bottom=(Math.random()*36)+'px';
-      p.style.animationDuration=(6+Math.random()*6)+'s'; p.style.animationDelay=(Math.random()*6)+'s';
-      field.appendChild(p);
-    }
-    const leafRow=document.getElementById('leafRow'); const leaves=['🍃','🌿','🍃'];
-    for(let i=0;i<6;i++){
-      const l=document.createElement('span'); l.className='leaf'; l.textContent=leaves[i%leaves.length];
-      l.style.left=(i*17+2)+'%'; l.style.animationDelay=(i*0.4)+'s';
-      leafRow.appendChild(l);
-    }
-  }
-}
-function ensureStars(){
-  if(starsDone) return; starsDone=true;
-  const wrap=document.getElementById('heroStars');
-  for(let i=0;i<24;i++){
-    const s=document.createElement('i');
-    s.style.left=(Math.random()*100)+'%'; s.style.top=(Math.random()*60)+'%'; s.style.animationDelay=(Math.random()*4)+'s';
-    wrap.appendChild(s);
-  }
 }
 
 /* ============================= REVEAL ANIMATION ============================= */
@@ -166,7 +126,7 @@ function showScreen(name){
   if(name==='journal') renderJournal();
   if(name==='memory'){ renderMemoryChips(); renderChat(); }
   if(name==='insights') renderInsights();
-  if(name==='home') staggerReveal('.card, .domain-card', document.getElementById('screen-home'));
+  if(name==='home') staggerReveal('.card, .bento', document.getElementById('screen-home'));
   if(name==='journal') staggerReveal('.journal-entry', document.getElementById('journalList'));
   if(name==='insights') staggerReveal('.rh-row', document.getElementById('ritualHistoryList'));
 }
@@ -276,8 +236,49 @@ function renderHome(){
   else { ctaIcon.textContent='☀️'; ctaTitle.textContent=t('ritual_cta_todo_title'); ctaSub.textContent=t('ritual_cta_todo_sub'); }
 
   renderWaterRow();
-  renderWeekBars('weekBars', 7);
+  renderCalStrip();
+  renderSparkline('weekSparkline', 7);
   renderPerformanceGrid();
+}
+function renderCalStrip(){
+  const wrap = document.getElementById('calStrip'); if(!wrap) return;
+  const fmt = lang==='ar'
+    ? new Intl.DateTimeFormat('ar', {weekday:'narrow'})
+    : new Intl.DateTimeFormat('en', {weekday:'short'});
+  wrap.innerHTML='';
+  for(let i=6;i>=0;i--){
+    const key = dateKeyOffset(-i);
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const done = !!state.ritual.history[key];
+    const label = lang==='ar' ? fmt.format(d) : fmt.format(d).slice(0,2);
+    const day = document.createElement('div');
+    day.className = 'cal-day' + (i===0?' active':'') + (done?' done':'');
+    day.innerHTML = `<span class="cd-lbl">${label}</span><span class="cd-dot num">${d.getDate()}</span>`;
+    wrap.appendChild(day);
+  }
+}
+function renderSparkline(svgId, days){
+  const svg = document.getElementById(svgId); if(!svg) return;
+  const w=300, h=60, pad=6;
+  const pts=[];
+  for(let i=days-1;i>=0;i--){
+    const rec = state.scoreHistory[dateKeyOffset(-i)];
+    pts.push(rec ? rec.total : 0);
+  }
+  const stepX = (w-pad*2)/(pts.length-1||1);
+  const coords = pts.map((v,i)=>{
+    const x = pad + i*stepX;
+    const y = h - pad - (Math.max(0,Math.min(100,v))/100)*(h-pad*2);
+    return [x,y];
+  });
+  const linePath = coords.map((c,i)=> (i===0?'M':'L')+c[0].toFixed(1)+','+c[1].toFixed(1)).join(' ');
+  const fillPath = linePath + ` L${coords[coords.length-1][0].toFixed(1)},${h} L${coords[0][0].toFixed(1)},${h} Z`;
+  svg.innerHTML = `
+    <path class="fill" d="${fillPath}" fill="currentColor" stroke="none"></path>
+    <path d="${linePath}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+    <circle cx="${coords[coords.length-1][0].toFixed(1)}" cy="${coords[coords.length-1][1].toFixed(1)}" r="4" fill="currentColor"></circle>
+  `;
+  svg.style.color = 'var(--lavender-deep)';
 }
 document.getElementById('ritualCta').addEventListener('click', ()=>{
   const entry = state.ritual.history[todayKey()];
@@ -302,13 +303,6 @@ function ensureWaterDay(){
 }
 function renderWaterRow(){
   ensureWaterDay();
-  const row = document.getElementById('waterRow'); row.innerHTML='';
-  for(let i=0;i<state.waterGoal;i++){
-    const d = document.createElement('span');
-    d.className = 'water-drop' + (i<state.water.count ? ' filled' : '');
-    d.textContent = '💧';
-    row.appendChild(d);
-  }
   document.getElementById('waterCount').textContent = state.water.count;
   document.getElementById('waterGoalLabel').textContent = t('water_of')(state.waterGoal);
 }
@@ -338,26 +332,20 @@ function renderWeekBars(elId, days){
 }
 
 /* ============================= PERFORMANCE UI ============================= */
-function hexToRgba(hex, alpha){
-  const h = hex.replace('#','');
-  const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-function domainAccentPale(d){ return state.dark ? hexToRgba(d.accent, 0.22) : d.accentPale; }
 function renderPerformanceGrid(){
   const grid = document.getElementById('performanceGrid'); if(!grid) return;
   grid.innerHTML = DOMAINS.map(d=>{
     const done = domainDoneToday(d.key);
     const count = domainCompletedCount(d.key);
     return `
-      <button class="domain-card" data-domain="${d.key}" style="--acc:${d.accent};--acc-pale:${domainAccentPale(d)}">
-        <span class="domain-card-emoji">${d.emoji}</span>
-        <span class="domain-card-name">${t('dom_'+d.key+'_name')}</span>
-        <span class="domain-card-tag">${t('dom_'+d.key+'_tag')}</span>
-        <span class="domain-card-status ${done?'done':''}">${done ? '✓' : t('day_n')(count+1)}</span>
+      <button class="bento clickable" data-domain="${d.key}" style="background:var(--${d.hue});">
+        <span class="bento-icon">${d.emoji}</span>
+        <span class="bento-status ${done?'done':''} num">${done ? '✓' : t('day_n')(count+1)}</span>
+        <div class="bento-title">${t('dom_'+d.key+'_name')}</div>
+        <div class="bento-sub">${t('dom_'+d.key+'_tag')}</div>
       </button>`;
   }).join('');
-  grid.querySelectorAll('.domain-card').forEach(card=>{
+  grid.querySelectorAll('.bento[data-domain]').forEach(card=>{
     card.addEventListener('click', ()=> openDomainScreen(card.dataset.domain));
   });
 }
@@ -382,8 +370,8 @@ function renderDomainScreen(){
   const streak = domainStreak(key);
   const done = domainDoneToday(key);
   const screen = document.getElementById('screen-domain');
-  screen.style.setProperty('--acc', d.accent);
-  screen.style.setProperty('--acc-pale', domainAccentPale(d));
+  screen.style.setProperty('--acc', `var(--${d.hue}-deep)`);
+  screen.style.setProperty('--acc-pale', `var(--${d.hue})`);
   document.getElementById('domainEmoji').textContent = d.emoji;
   document.getElementById('domainName').textContent = t('dom_'+key+'_name');
   document.getElementById('domainTag').textContent = t('dom_'+key+'_tag');
@@ -419,6 +407,7 @@ document.getElementById('domainDoneBtn').addEventListener('click', ()=>{
 });
 
 /* ============================= INSIGHTS ============================= */
+let insightsHistoryDays = 7;
 function renderInsights(){
   const dateStr = todayKey();
   const today = state.scoreHistory[dateStr] || {total:0, breakdown:{ritual:0,hydration:0,journal:0,streak:0,mood:0}};
@@ -432,7 +421,15 @@ function renderInsights(){
     return `<div class="bd-row"><span class="bd-label">${factorLabel(k)}</span><span class="bd-track"><i class="bd-fill" style="width:${Math.round(val/max*100)}%"></i></span><span class="bd-val">${val}/${max}</span></div>`;
   }).join('');
 
-  renderWeekBars('weekBars2', 14);
+  const last7 = [];
+  for(let i=0;i<7;i++){ const rec = state.scoreHistory[dateKeyOffset(-i)]; if(rec) last7.push(rec.total); }
+  document.getElementById('statAvg').textContent = last7.length ? Math.round(last7.reduce((a,b)=>a+b,0)/last7.length) : '–';
+  document.getElementById('statBest').textContent = last7.length ? Math.max(...last7) : '–';
+  let longest=0, run=0;
+  for(let i=59;i>=0;i--){ if(state.ritual.history[dateKeyOffset(-i)]){ run++; longest=Math.max(longest,run); } else run=0; }
+  document.getElementById('statLongStreak').textContent = longest;
+
+  renderWeekBars('weekBars2', insightsHistoryDays);
 
   const hist = state.ritual.history;
   const keys = Object.keys(hist).sort().reverse().slice(0,30);
@@ -447,6 +444,12 @@ function renderInsights(){
     }).join('');
   }
 }
+
+document.getElementById('historyTabs').querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=>{
+  insightsHistoryDays = parseInt(b.dataset.days,10);
+  document.getElementById('historyTabs').querySelectorAll('button').forEach(x=>x.classList.toggle('active', x===b));
+  renderInsights();
+}));
 
 /* ============================= MORNING RITUAL ============================= */
 let ritualSelectedWeather=null, breathTimers=[];
@@ -545,6 +548,23 @@ function buildJournalMoodRow(){
     row.appendChild(btn);
   });
 }
+const JOURNAL_PROMPTS = {
+  en: ["What's on my mind right now?", "One thing I'm grateful for", "What's stressing me out?", "A small win from today"],
+  ar: ["شو في بالي هلأ؟", "شي وحد أنا ممتن له", "شو ضاغط علي؟", "انتصار صغير من اليوم"]
+};
+function buildJournalSuggestRow(){
+  const row = document.getElementById('journalSuggestRow'); if(!row) return;
+  row.innerHTML='';
+  JOURNAL_PROMPTS[lang].forEach(p=>{
+    const c=document.createElement('button'); c.className='suggest-chip'; c.textContent=p;
+    c.addEventListener('click', ()=>{
+      const input=document.getElementById('journalInput');
+      input.value = input.value.trim() ? input.value.trim()+'\n'+p+' ' : p+' ';
+      input.focus();
+    });
+    row.appendChild(c);
+  });
+}
 document.getElementById('journalSaveBtn').addEventListener('click', ()=>{
   const val = document.getElementById('journalInput').value.trim();
   if(!val) return;
@@ -560,6 +580,7 @@ document.getElementById('journalSaveBtn').addEventListener('click', ()=>{
 document.getElementById('journalSearch').addEventListener('input', renderJournal);
 function renderJournal(){
   buildJournalMoodRow();
+  buildJournalSuggestRow();
   const q = document.getElementById('journalSearch').value.trim().toLowerCase();
   const entries = state.journal.slice().sort((a,b)=>b.ts-a.ts).filter(e=> !q || e.text.toLowerCase().includes(q));
   document.getElementById('journalCount').textContent = state.journal.length ? ` (${state.journal.length})` : '';
@@ -854,7 +875,7 @@ function bootApp(){
     document.getElementById('onboardOverlay').classList.add('hidden');
     maybeShowRitual();
   }
-  staggerReveal('.card, .domain-card', document.getElementById('screen-home'));
+  staggerReveal('.card, .bento', document.getElementById('screen-home'));
   setInterval(initHero, 5*60*1000);
 }
 bootApp();

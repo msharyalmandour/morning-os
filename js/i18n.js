@@ -129,6 +129,8 @@ en: {
   domain_mark_done: 'Mark today done',
   domain_done_today: 'Done for today ✓',
   domain_cycle_note: "You've completed the full program — we'll keep reinforcing these advanced practices.",
+  score_history: 'History', tab_week: 'Week', tab_2weeks: '2 Weeks', tab_month: 'Month',
+  stat_avg: '7-day avg', stat_best: 'Best day', stat_long_streak: 'Best streak',
 },
 ar: {
   ob_welcome_title: 'صباح الخير.',
@@ -251,6 +253,8 @@ ar: {
   domain_mark_done: 'علّم اليوم كمكتمل',
   domain_done_today: 'خلصته اليوم ✓',
   domain_cycle_note: 'خلصت البرنامج كامل — رح نكمل نعزز هالممارسات المتقدمة.',
+  score_history: 'السجل', tab_week: 'أسبوع', tab_2weeks: 'أسبوعين', tab_month: 'شهر',
+  stat_avg: 'متوسط 7 أيام', stat_best: 'أفضل يوم', stat_long_streak: 'أطول سلسلة',
 }
 };
 let lang = localStorage.getItem('morningOS_lang') || 'ar';

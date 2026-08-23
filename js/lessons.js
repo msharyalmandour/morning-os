@@ -6,10 +6,10 @@
    far in that domain, so each day genuinely builds on the last.
    ============================================================ */
 const DOMAINS = [
-  { key:'sleep',      emoji:'🌙', accent:'#5B5A82', accentPale:'#E4E1F0' },
-  { key:'nutrition',  emoji:'🍽️', accent:'#C97B3D', accentPale:'#F3DFC4' },
-  { key:'movement',   emoji:'🏃', accent:'#6B7A54', accentPale:'#DCE3CC' },
-  { key:'nervous',    emoji:'🫁', accent:'#6F93A8', accentPale:'#DCE7EC' }
+  { key:'sleep',      emoji:'🌙', hue:'lavender' },
+  { key:'nutrition',  emoji:'🍽️', hue:'mustard' },
+  { key:'movement',   emoji:'🏃', hue:'sage' },
+  { key:'nervous',    emoji:'🫁', hue:'blush' }
 ];
 
 const LESSONS = {
