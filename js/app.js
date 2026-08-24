@@ -1,108 +1,51 @@
 /* ============================= STATE ============================= */
-function defaultPerformance(){
-  const p = {};
-  DOMAINS.forEach(d=>{ p[d.key] = { history: {} }; });
-  return p;
-}
 const DEFAULT_STATE = {
-  user: null,               // { name }
-  goal: null,
+  user: null,               // { name, thesisTitle }
   onboarded: false,
   dark: false,
-  waterGoal: 8,
-  water: { date: null, count: 0 },
-  ritual: { history: {} },  // { 'YYYY-MM-DD': {weather, energy, intention, gratitude, completedAt} }
-  journal: [],               // [{id, date, ts, mood, text}]
-  scoreHistory: {},          // { 'YYYY-MM-DD': {total, breakdown} }
-  streak: 0,
-  chatLog: [],               // [{who:'ai'|'user', text, ts}]
-  performance: defaultPerformance() // { [domainKey]: { history: {'YYYY-MM-DD': true} } }
+  sections: JSON.parse(JSON.stringify(SEED_SECTIONS)),
+  gap: JSON.parse(JSON.stringify(SEED_GAP)),
+  aim: JSON.parse(JSON.stringify(SEED_AIM)),
+  methodology: JSON.parse(JSON.stringify(SEED_METHODOLOGY)),
+  studies: JSON.parse(JSON.stringify(SEED_STUDIES)),
+  tasks: JSON.parse(JSON.stringify(SEED_TASKS))
 };
 let state = loadState();
 function loadState(){
   try{
-    const raw = localStorage.getItem('morningOS_state');
+    const raw = localStorage.getItem('bahthi_state');
     if(raw){
       const parsed = JSON.parse(raw);
       const merged = JSON.parse(JSON.stringify(DEFAULT_STATE));
       Object.assign(merged, parsed);
-      merged.water = Object.assign({}, DEFAULT_STATE.water, parsed.water);
-      merged.ritual = Object.assign({history:{}}, parsed.ritual);
-      const perf = defaultPerformance();
-      DOMAINS.forEach(d=>{ perf[d.key] = Object.assign({history:{}}, parsed.performance && parsed.performance[d.key]); });
-      merged.performance = perf;
+      merged.user = parsed.user || null;
+      const sections = {};
+      PROPOSAL_SECTIONS.forEach(s=>{
+        sections[s.key] = Object.assign({status:'pending', note:''}, DEFAULT_STATE.sections[s.key], parsed.sections && parsed.sections[s.key]);
+      });
+      merged.sections = sections;
+      merged.gap = Object.assign({}, DEFAULT_STATE.gap, parsed.gap);
+      merged.aim = Object.assign({statement:'', questions:['','','']}, parsed.aim);
+      merged.methodology = Object.assign({}, DEFAULT_STATE.methodology, parsed.methodology, { dataCollection: (parsed.methodology && Array.isArray(parsed.methodology.dataCollection)) ? parsed.methodology.dataCollection : [] });
+      merged.studies = Array.isArray(parsed.studies) ? parsed.studies : DEFAULT_STATE.studies;
+      merged.tasks = Array.isArray(parsed.tasks) ? parsed.tasks : DEFAULT_STATE.tasks;
       return merged;
     }
   }catch(e){}
   return JSON.parse(JSON.stringify(DEFAULT_STATE));
 }
-function saveState(){ try{ localStorage.setItem('morningOS_state', JSON.stringify(state)); }catch(e){} }
+function saveState(){ try{ localStorage.setItem('bahthi_state', JSON.stringify(state)); }catch(e){} }
 function todayKey(){ return new Date().toISOString().slice(0,10); }
-function dateKeyOffset(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
-
-const WEATHER = [
-  { key:'sunny',  emoji:'☀️' },
-  { key:'cloudy', emoji:'☁️' },
-  { key:'rainy',  emoji:'🌧️' },
-  { key:'stormy', emoji:'⛈️' }
-];
-function weatherEmoji(key){ const w = WEATHER.find(w=>w.key===key); return w ? w.emoji : '🌤️'; }
-
-/* ============================= LANGUAGE ============================= */
-function setLang(newLang){
-  lang = newLang;
-  localStorage.setItem('morningOS_lang', lang);
-  applyLanguage();
+function newId(){ return Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7); }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtDate(dateStr){
+  if(!dateStr) return '';
+  const d = new Date(dateStr+'T00:00:00');
+  return new Intl.DateTimeFormat('ar', {day:'numeric', month:'long', calendar:'gregory'}).format(d);
 }
-function applyLanguage(){
-  document.documentElement.lang = lang;
-  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.dataset.i18n); });
-  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder = t(el.dataset.i18nPh); });
-  document.getElementById('langToggle').textContent = lang === 'ar' ? 'EN' : 'عربي';
-  buildGoalOptions();
-  buildWeatherGrid();
-  renderSettingsUI();
-  initHero();
-  renderHome();
-  renderJournal();
-  renderInsights();
-  renderMemoryChips();
-  renderChat();
-  if(document.getElementById('ritualOverlay') && !document.getElementById('ritualOverlay').classList.contains('hidden')){
-    refreshRitualStepText();
-  }
-  if(currentDomainKey && document.getElementById('screen-domain').classList.contains('active')){
-    renderDomainScreen();
-  }
-}
-
-/* ============================= HERO ============================= */
-function getTimePhase(){
-  const h = new Date().getHours();
-  if(h>=21 || h<5) return 'night';
-  if(h<12) return 'morning';
-  if(h<18) return 'afternoon';
-  return 'evening';
-}
-const HERO_PHASE_STYLE = {
-  morning:{ bento:'bento-mustard', icon:'☀️' },
-  afternoon:{ bento:'bento-sage', icon:'🌤️' },
-  evening:{ bento:'bento-coral', icon:'🌇' },
-  night:{ bento:'bento-lavender', icon:'🌙' }
-};
-function initHero(){
-  const phase = getTimePhase();
-  const name = state.user ? state.user.name : (lang==='ar'?'صديقي':'friend');
-  const bento=document.getElementById('heroBento'), icon=document.getElementById('heroIcon'),
-        eyebrow=document.getElementById('heroEyebrow'), greeting=document.getElementById('heroGreeting'),
-        sub=document.getElementById('heroSub');
-  const style = HERO_PHASE_STYLE[phase];
-  bento.className = 'bento full clickable ' + style.bento;
-  icon.textContent = style.icon;
-  eyebrow.textContent = t('greet_'+phase+'_eyebrow');
-  greeting.textContent = t('greet_'+phase+'_title_name')(name);
-  sub.textContent = t('greet_'+phase+'_sub');
+function daysUntil(dateStr){
+  const d = new Date(dateStr+'T00:00:00'), now = new Date(todayKey()+'T00:00:00');
+  return Math.round((d-now)/86400000);
 }
 
 /* ============================= REVEAL ANIMATION ============================= */
@@ -111,7 +54,7 @@ function staggerReveal(selector, root){
   els.forEach((el,i)=>{
     el.classList.add('reveal');
     el.classList.remove('in');
-    setTimeout(()=> el.classList.add('in'), 40 + i*55);
+    setTimeout(()=> el.classList.add('in'), 40 + i*45);
   });
 }
 
@@ -123,12 +66,14 @@ function showScreen(name){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
   document.getElementById('screens').scrollTop = 0;
   window.scrollTo(0, 0);
-  if(name==='journal') renderJournal();
-  if(name==='memory'){ renderMemoryChips(); renderChat(); }
-  if(name==='insights') renderInsights();
+  if(name==='home') renderHome();
+  if(name==='proposal') renderProposal();
+  if(name==='literature') renderLiterature();
+  if(name==='tasks') renderTasks();
   if(name==='home') staggerReveal('.card, .bento', document.getElementById('screen-home'));
-  if(name==='journal') staggerReveal('.journal-entry', document.getElementById('journalList'));
-  if(name==='insights') staggerReveal('.rh-row', document.getElementById('ritualHistoryList'));
+  if(name==='proposal') staggerReveal('.section-row, .card', document.getElementById('screen-proposal'));
+  if(name==='literature') staggerReveal('.study-card', document.getElementById('screen-literature'));
+  if(name==='tasks') staggerReveal('.task-row', document.getElementById('screen-tasks'));
 }
 
 /* ============================= VIEW MODAL ============================= */
@@ -138,745 +83,467 @@ function closeView(){ viewOverlay.classList.remove('active'); }
 document.getElementById('viewClose').addEventListener('click', closeView);
 viewOverlay.addEventListener('click', e=>{ if(e.target===viewOverlay) closeView(); });
 
-/* ============================= LIFE SCORE ============================= */
-function calcStreak(){
-  const hist = state.ritual.history;
-  let streak = 0;
-  let cursor = new Date();
-  if(!hist[todayKey()]) cursor.setDate(cursor.getDate()-1);
-  while(true){
-    const key = cursor.toISOString().slice(0,10);
-    if(hist[key]){ streak++; cursor.setDate(cursor.getDate()-1); } else break;
-  }
-  return streak;
+/* ============================= DERIVED PROGRESS ============================= */
+function calcProgress(){
+  const statuses = PROPOSAL_SECTIONS.map(s=>state.sections[s.key].status);
+  const done = statuses.filter(s=>s==='done').length;
+  const prog = statuses.filter(s=>s==='progress').length;
+  const secScore = (done + prog*0.5) / statuses.length;
+  const tasksDone = state.tasks.filter(t=>t.status==='done').length;
+  const taskScore = state.tasks.length ? tasksDone/state.tasks.length : 0;
+  return Math.max(0, Math.min(100, Math.round(secScore*70 + taskScore*30)));
 }
-/* ============================= PERFORMANCE DOMAINS ============================= */
-function domainCompletedCount(key){ return Object.keys(state.performance[key].history).length; }
-function domainDoneToday(key){ return !!state.performance[key].history[todayKey()]; }
-function domainStreak(key){
-  const hist = state.performance[key].history;
-  let streak = 0;
-  let cursor = new Date();
-  if(!hist[todayKey()]) cursor.setDate(cursor.getDate()-1);
-  while(true){
-    const k = cursor.toISOString().slice(0,10);
-    if(hist[k]){ streak++; cursor.setDate(cursor.getDate()-1); } else break;
-  }
-  return streak;
+function journeyGates(){
+  return [
+    state.sections.background.status==='done' && state.sections.problem.status==='done',
+    state.sections.litreview.status==='done',
+    state.sections.gap.status==='done',
+    state.sections.aim.status==='done' && state.sections.questions.status==='done',
+    state.sections.methodology.status==='done',
+    false, false, false
+  ];
 }
-function domainLessonIndex(key){ return domainCompletedCount(key) % LESSONS[key].length; }
-function domainLesson(key){ return LESSONS[key][domainLessonIndex(key)]; }
-function domainJustCycled(key){
-  const count = domainCompletedCount(key);
-  return count > 0 && count % LESSONS[key].length === 0;
+function getCurrentStageIndex(){
+  const gates = journeyGates();
+  const idx = gates.findIndex(g=>!g);
+  return idx===-1 ? JOURNEY.length-1 : idx;
 }
-function markDomainDone(key){
-  if(domainDoneToday(key)) return;
-  state.performance[key].history[todayKey()] = true;
-  saveState();
-  recalcLifeScore();
+function getCurrentTask(){
+  return state.tasks.find(t=>t.status==='progress')
+      || state.tasks.slice().sort((a,b)=>a.deadline.localeCompare(b.deadline)).find(t=>t.status==='not_started')
+      || null;
+}
+function getNextPendingSection(){
+  return PROPOSAL_SECTIONS.find(s=>state.sections[s.key].status==='pending') || null;
+}
+function getNextDeadlineTask(){
+  return state.tasks.filter(t=>t.status!=='done').slice().sort((a,b)=>a.deadline.localeCompare(b.deadline))[0] || null;
 }
 
-const LIFE_SCORE_MAXES = {ritual:20,hydration:10,journal:10,streak:10,mood:10,sleep:10,nutrition:10,movement:10,nervous:10};
-function factorLabel(key){
-  return DOMAINS.some(d=>d.key===key) ? t('dom_'+key+'_name') : t('factor_'+key);
-}
-function recalcLifeScore(){
-  const dateStr = todayKey();
-  const ritualEntry = state.ritual.history[dateStr];
-  const ritualPts = ritualEntry ? Math.round(10 + ritualEntry.energy*2) : 0;
-  const hydrationPts = Math.round(Math.min(state.water.count/state.waterGoal, 1) * 10);
-  const journalToday = state.journal.some(e=>e.date===dateStr);
-  const journalPts = journalToday ? 10 : 0;
-  const streak = calcStreak();
-  const streakPts = Math.round(Math.min(streak,10)/10*10);
-  const recentEnergies=[];
-  for(let i=0;i<7 && recentEnergies.length<3;i++){
-    const e = state.ritual.history[dateKeyOffset(-i)];
-    if(e) recentEnergies.push(e.energy);
-  }
-  const moodAvg = recentEnergies.length ? recentEnergies.reduce((a,b)=>a+b,0)/recentEnergies.length : 2.5;
-  const moodPts = Math.round(moodAvg/5*10);
-  const breakdown = {ritual:ritualPts,hydration:hydrationPts,journal:journalPts,streak:streakPts,mood:moodPts};
-  DOMAINS.forEach(d=>{ breakdown[d.key] = domainDoneToday(d.key) ? 10 : 0; });
-  const total = Object.values(breakdown).reduce((a,b)=>a+b,0);
-  state.scoreHistory[dateStr] = { total, breakdown };
-  state.streak = streak;
-  saveState();
+/* ============================= JOURNEY STEPPER ============================= */
+function renderJourneyStepper(elId){
+  const wrap = document.getElementById(elId); if(!wrap) return;
+  const gates = journeyGates();
+  const currentIdx = getCurrentStageIndex();
+  wrap.innerHTML = JOURNEY.map((s,i)=>{
+    const done = gates[i];
+    const isCurrent = i===currentIdx && !done;
+    return `<div class="step-item ${done?'done':''} ${isCurrent?'current':''}">
+      <div class="step-line"></div>
+      <div class="step-icon">${done?'✓':s.emoji}</div>
+      <div class="step-label">${s.label}</div>
+    </div>`;
+  }).join('');
 }
 
+/* ============================= SECTION STATUS BADGE ============================= */
+function statusPillHtml(status){
+  return `<span class="status-pill ${status}">${SECTION_STATUS_LABEL[status]}</span>`;
+}
+function sectionDotStyle(hue){ return `background:var(--${hue});`; }
+
+/* ============================= HOME ============================= */
 function renderHome(){
-  initHero();
-  recalcLifeScore();
-  const dateStr = todayKey();
-  const today = state.scoreHistory[dateStr] || {total:0, breakdown:{ritual:0,hydration:0,journal:0,streak:0,mood:0}};
-  const ritualEntry = state.ritual.history[dateStr];
+  const name = state.user ? state.user.name : 'صديق/ة البحث';
+  document.getElementById('heroGreeting').textContent = `أهلاً، ${name}`;
+  document.getElementById('heroThesisTitle').textContent = (state.user && state.user.thesisTitle) ? state.user.thesisTitle : 'أضف عنوان دراستك من الإعدادات لاحقاً';
 
-  ['scoreRing','scoreRing2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.setProperty('--pct', today.total); });
-  const v1=document.getElementById('scoreVal'); if(v1) v1.textContent = today.total;
-  const v2=document.getElementById('scoreVal2'); if(v2) v2.textContent = today.total;
+  const progress = calcProgress();
+  const ring = document.getElementById('progressRing');
+  if(ring) ring.style.setProperty('--pct', progress);
+  document.getElementById('progressVal').textContent = progress;
 
-  document.getElementById('statMood').textContent = ritualEntry ? weatherEmoji(ritualEntry.weather) : '–';
-  document.getElementById('statWater').textContent = `${state.water.count}/${state.waterGoal}`;
-  document.getElementById('statStreak').textContent = state.streak;
+  const stageIdx = getCurrentStageIndex();
+  document.getElementById('currentStageLabel').textContent = JOURNEY[stageIdx].emoji+' '+JOURNEY[stageIdx].label;
 
-  const whyCard=document.getElementById('scoreWhyCard'), whyText=document.getElementById('scoreWhyText');
-  const yesterday = state.scoreHistory[dateKeyOffset(-1)];
-  if(yesterday){
-    const delta = today.total - yesterday.total;
-    let msg;
-    if(delta > 4) msg = lang==='ar' ? `ارتفعت نقاطك ${delta} نقطة عن أمس — استمر كذا.` : `Your score is up ${delta} points from yesterday — keep it going.`;
-    else if(delta < -4) msg = lang==='ar' ? `نقاطك نزلت ${Math.abs(delta)} نقطة عن أمس. جرب تكمل طقس الصباح أو تشرب مويه أكثر.` : `Your score dipped ${Math.abs(delta)} points from yesterday. A finished ritual or a bit more water can help.`;
-    else msg = lang==='ar' ? 'نقاطك ثابتة تقريباً زي أمس.' : "Your score is holding steady with yesterday.";
-    whyText.textContent = msg; whyCard.style.display='block';
-  } else { whyCard.style.display='none'; }
+  const curTask = getCurrentTask();
+  document.getElementById('currentTaskText').textContent = curTask ? curTask.title : 'كل مهامك مكتملة — أضف مهمة جديدة!';
 
-  const ctaIcon=document.getElementById('ritualCtaIcon'), ctaTitle=document.getElementById('ritualCtaTitle'), ctaSub=document.getElementById('ritualCtaSub');
-  if(ritualEntry){ ctaIcon.textContent='✅'; ctaTitle.textContent=t('ritual_cta_done_title'); ctaSub.textContent=t('ritual_cta_done_sub'); }
-  else { ctaIcon.textContent='☀️'; ctaTitle.textContent=t('ritual_cta_todo_title'); ctaSub.textContent=t('ritual_cta_todo_sub'); }
+  const nextSection = getNextPendingSection();
+  document.getElementById('nextStepText').textContent = nextSection ? `ابدأ: ${nextSection.label}` : 'راجع مقترحك بشكل نهائي';
 
-  renderWaterRow();
-  renderCalStrip();
-  renderSparkline('weekSparkline', 7);
-  renderPerformanceGrid();
-}
-function renderCalStrip(){
-  const wrap = document.getElementById('calStrip'); if(!wrap) return;
-  const fmt = lang==='ar'
-    ? new Intl.DateTimeFormat('ar', {weekday:'narrow'})
-    : new Intl.DateTimeFormat('en', {weekday:'short'});
-  wrap.innerHTML='';
-  for(let i=6;i>=0;i--){
-    const key = dateKeyOffset(-i);
-    const d = new Date(); d.setDate(d.getDate()-i);
-    const done = !!state.ritual.history[key];
-    const label = lang==='ar' ? fmt.format(d) : fmt.format(d).slice(0,2);
-    const day = document.createElement('div');
-    day.className = 'cal-day' + (i===0?' active':'') + (done?' done':'');
-    day.innerHTML = `<span class="cd-lbl">${label}</span><span class="cd-dot num">${d.getDate()}</span>`;
-    wrap.appendChild(day);
-  }
-}
-function renderSparkline(svgId, days){
-  const svg = document.getElementById(svgId); if(!svg) return;
-  const w=300, h=60, pad=6;
-  const pts=[];
-  for(let i=days-1;i>=0;i--){
-    const rec = state.scoreHistory[dateKeyOffset(-i)];
-    pts.push(rec ? rec.total : 0);
-  }
-  const stepX = (w-pad*2)/(pts.length-1||1);
-  const coords = pts.map((v,i)=>{
-    const x = pad + i*stepX;
-    const y = h - pad - (Math.max(0,Math.min(100,v))/100)*(h-pad*2);
-    return [x,y];
-  });
-  const linePath = coords.map((c,i)=> (i===0?'M':'L')+c[0].toFixed(1)+','+c[1].toFixed(1)).join(' ');
-  const fillPath = linePath + ` L${coords[coords.length-1][0].toFixed(1)},${h} L${coords[0][0].toFixed(1)},${h} Z`;
-  svg.innerHTML = `
-    <path class="fill" d="${fillPath}" fill="currentColor" stroke="none"></path>
-    <path d="${linePath}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
-    <circle cx="${coords[coords.length-1][0].toFixed(1)}" cy="${coords[coords.length-1][1].toFixed(1)}" r="4" fill="currentColor"></circle>
-  `;
-  svg.style.color = 'var(--lavender-deep)';
-}
-document.getElementById('ritualCta').addEventListener('click', ()=>{
-  const entry = state.ritual.history[todayKey()];
-  if(entry){
-    openView(`
-      <h2 data-i18n-skip>${t('ritual_cta_done_title')}</h2>
-      <div class="meta-row" style="margin:10px 0 16px;">
-        <span class="mem-chip">${weatherEmoji(entry.weather)} ${t('weather_'+entry.weather)}</span>
-        <span class="mem-chip">⚡ ${entry.energy}/5</span>
-      </div>
-      ${entry.intention ? `<p style="font-size:13px;color:var(--ink-soft);line-height:1.6;"><b style="color:var(--ink);">${t('ritual_intention_title')}:</b><br>${escapeHtml(entry.intention)}</p>` : ''}
-      ${entry.gratitude ? `<p style="font-size:13px;color:var(--ink-soft);line-height:1.6;"><b style="color:var(--ink);">${t('ritual_gratitude_title')}:</b><br>${escapeHtml(entry.gratitude)}</p>` : ''}
-    `);
+  const nextTask = getNextDeadlineTask();
+  const dTitle = document.getElementById('nextDeadlineTitle'), dSub = document.getElementById('nextDeadlineSub');
+  if(nextTask){
+    const days = daysUntil(nextTask.deadline);
+    dTitle.textContent = nextTask.title;
+    dSub.textContent = days < 0 ? `متأخر ${Math.abs(days)} يوم — ${fmtDate(nextTask.deadline)}` : days===0 ? `اليوم — ${fmtDate(nextTask.deadline)}` : `بعد ${days} يوم — ${fmtDate(nextTask.deadline)}`;
   } else {
-    startRitual();
+    dTitle.textContent = 'ما في مواعيد قادمة';
+    dSub.textContent = 'خلّصت كل مهامك المجدولة.';
   }
-});
 
-/* ============================= WATER ============================= */
-function ensureWaterDay(){
-  if(state.water.date !== todayKey()){ state.water = {date: todayKey(), count:0}; saveState(); }
-}
-function renderWaterRow(){
-  ensureWaterDay();
-  document.getElementById('waterCount').textContent = state.water.count;
-  document.getElementById('waterGoalLabel').textContent = t('water_of')(state.waterGoal);
-}
-document.getElementById('waterPlus').addEventListener('click', ()=>{
-  ensureWaterDay();
-  if(state.water.count < state.waterGoal){ state.water.count++; saveState(); renderHome(); renderMemoryChips(); }
-});
-document.getElementById('waterMinus').addEventListener('click', ()=>{
-  ensureWaterDay();
-  if(state.water.count > 0){ state.water.count--; saveState(); renderHome(); renderMemoryChips(); }
-});
+  renderJourneyStepper('journeyStepper');
 
-/* ============================= WEEK BARS ============================= */
-function renderWeekBars(elId, days){
-  const wrap = document.getElementById(elId); wrap.innerHTML='';
-  const fmt = new Intl.DateTimeFormat(lang==='ar'?'ar':'en', {weekday:'narrow'});
-  for(let i=days-1;i>=0;i--){
-    const key = dateKeyOffset(-i);
-    const rec = state.scoreHistory[key];
-    const pct = rec ? Math.max(rec.total,3) : 3;
-    const bar = document.createElement('div');
-    bar.className = 'bar' + (i===0 ? ' today' : '');
-    const d = new Date(); d.setDate(d.getDate()-i);
-    bar.innerHTML = `<i style="height:${pct}%"></i><span class="lbl">${fmt.format(d)}</span>`;
-    wrap.appendChild(bar);
-  }
-}
-
-/* ============================= PERFORMANCE UI ============================= */
-function renderPerformanceGrid(){
-  const grid = document.getElementById('performanceGrid'); if(!grid) return;
-  grid.innerHTML = DOMAINS.map(d=>{
-    const done = domainDoneToday(d.key);
-    const count = domainCompletedCount(d.key);
-    return `
-      <button class="bento clickable" data-domain="${d.key}" style="background:var(--${d.hue});">
-        <span class="bento-icon">${d.emoji}</span>
-        <span class="bento-status ${done?'done':''} num">${done ? '✓' : t('day_n')(count+1)}</span>
-        <div class="bento-title">${t('dom_'+d.key+'_name')}</div>
-        <div class="bento-sub">${t('dom_'+d.key+'_tag')}</div>
-      </button>`;
+  const doneCount = PROPOSAL_SECTIONS.filter(s=>state.sections[s.key].status==='done').length;
+  document.getElementById('proposalCountLabel').textContent = `${doneCount}/${PROPOSAL_SECTIONS.length}`;
+  const grid = document.getElementById('proposalGridHome');
+  grid.innerHTML = PROPOSAL_SECTIONS.map(s=>{
+    const st = state.sections[s.key].status;
+    return `<button class="bento clickable" data-section="${s.key}" style="${sectionDotStyle(s.hue)}">
+      <span class="bento-status ${st==='done'?'done':''}">${SECTION_STATUS_LABEL[st]}</span>
+      <div class="bento-title" style="font-size:13.5px;margin-top:26px;">${s.label}</div>
+      <div class="bento-sub">${s.en}</div>
+    </button>`;
   }).join('');
-  grid.querySelectorAll('.bento[data-domain]').forEach(card=>{
-    card.addEventListener('click', ()=> openDomainScreen(card.dataset.domain));
-  });
-}
+  grid.querySelectorAll('[data-section]').forEach(b=> b.addEventListener('click', ()=> openSectionModal(b.dataset.section)));
 
-let currentDomainKey = null;
-function openDomainScreen(key){
-  currentDomainKey = key;
-  renderDomainScreen();
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.getElementById('screen-domain').classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.screen==='home'));
-  document.getElementById('screens').scrollTop = 0;
-  window.scrollTo(0, 0);
-  staggerReveal('.lesson-card', document.getElementById('screen-domain'));
+  document.getElementById('statCollected').textContent = state.studies.length;
+  document.getElementById('statReviewed').textContent = state.studies.filter(s=>s.reviewed).length;
+  document.getElementById('statRemaining').textContent = state.studies.filter(s=>!s.reviewed).length;
 }
-function renderDomainScreen(){
-  if(!currentDomainKey) return;
-  const key = currentDomainKey;
-  const d = DOMAINS.find(x=>x.key===key);
-  const lesson = domainLesson(key);
-  const count = domainCompletedCount(key);
-  const streak = domainStreak(key);
-  const done = domainDoneToday(key);
-  const screen = document.getElementById('screen-domain');
-  screen.style.setProperty('--acc', `var(--${d.hue}-deep)`);
-  screen.style.setProperty('--acc-pale', `var(--${d.hue})`);
-  document.getElementById('domainEmoji').textContent = d.emoji;
-  document.getElementById('domainName').textContent = t('dom_'+key+'_name');
-  document.getElementById('domainTag').textContent = t('dom_'+key+'_tag');
-  document.getElementById('domainDayBadge').textContent = t('day_n')(count+1);
-  document.getElementById('domainStreakBadge').textContent = streak>=2 ? `🔥 ${t('streak_days')(streak)}` : '';
-  document.getElementById('domainActionText').textContent = lesson.action[lang];
-  document.getElementById('domainWhyText').textContent = lesson.why[lang];
-  document.getElementById('domainPositiveText').textContent = lesson.positive[lang];
-  document.getElementById('domainNegativeText').textContent = lesson.negative[lang];
-  const btn = document.getElementById('domainDoneBtn');
-  btn.textContent = done ? t('domain_done_today') : t('domain_mark_done');
-  btn.classList.toggle('done', done);
-  btn.disabled = done;
-  const cycleNote = document.getElementById('domainCycleNote');
-  cycleNote.style.display = domainJustCycled(key) ? 'block' : 'none';
-  cycleNote.textContent = t('domain_cycle_note');
-  const dotsWrap = document.getElementById('domainDots');
-  dotsWrap.innerHTML='';
-  for(let i=6;i>=0;i--){
-    const k = dateKeyOffset(-i);
-    const on = !!state.performance[key].history[k];
-    const dot = document.createElement('span');
-    dot.className = 'domain-dot' + (on?' on':'') + (i===0?' today':'');
-    dotsWrap.appendChild(dot);
-  }
-}
-document.getElementById('domainBack').addEventListener('click', ()=> showScreen('home'));
-document.getElementById('domainDoneBtn').addEventListener('click', ()=>{
-  if(!currentDomainKey) return;
-  markDomainDone(currentDomainKey);
-  renderDomainScreen();
-  renderHome();
-});
+document.getElementById('nextStepCard').addEventListener('click', ()=> showScreen('proposal'));
+document.getElementById('nextDeadlineCard').addEventListener('click', ()=> showScreen('tasks'));
+document.getElementById('litSummaryCard').addEventListener('click', ()=> showScreen('literature'));
 
-/* ============================= INSIGHTS ============================= */
-let insightsHistoryDays = 7;
-function renderInsights(){
-  const dateStr = todayKey();
-  const today = state.scoreHistory[dateStr] || {total:0, breakdown:{ritual:0,hydration:0,journal:0,streak:0,mood:0}};
-  document.getElementById('insightsTodayText').textContent = lang==='ar'
-    ? `نقاطك اليوم ${today.total} من 100.`
-    : `Your score today is ${today.total} out of 100.`;
+/* ============================= PROPOSAL SCREEN ============================= */
+function renderProposal(){
+  renderJourneyStepper('journeyStepper2');
 
-  const card = document.getElementById('breakdownCard');
-  card.innerHTML = Object.keys(LIFE_SCORE_MAXES).map(k=>{
-    const val = today.breakdown[k]||0, max=LIFE_SCORE_MAXES[k];
-    return `<div class="bd-row"><span class="bd-label">${factorLabel(k)}</span><span class="bd-track"><i class="bd-fill" style="width:${Math.round(val/max*100)}%"></i></span><span class="bd-val">${val}/${max}</span></div>`;
-  }).join('');
-
-  const last7 = [];
-  for(let i=0;i<7;i++){ const rec = state.scoreHistory[dateKeyOffset(-i)]; if(rec) last7.push(rec.total); }
-  document.getElementById('statAvg').textContent = last7.length ? Math.round(last7.reduce((a,b)=>a+b,0)/last7.length) : '–';
-  document.getElementById('statBest').textContent = last7.length ? Math.max(...last7) : '–';
-  let longest=0, run=0;
-  for(let i=59;i>=0;i--){ if(state.ritual.history[dateKeyOffset(-i)]){ run++; longest=Math.max(longest,run); } else run=0; }
-  document.getElementById('statLongStreak').textContent = longest;
-
-  renderWeekBars('weekBars2', insightsHistoryDays);
-
-  const hist = state.ritual.history;
-  const keys = Object.keys(hist).sort().reverse().slice(0,30);
-  const list = document.getElementById('ritualHistoryList');
-  if(!keys.length){
-    list.innerHTML = `<p class="empty-note">${t('ritual_history_empty')}</p>`;
-  } else {
-    const fmt = new Intl.DateTimeFormat(lang==='ar'?'ar':'en', {month:'short', day:'numeric'});
-    list.innerHTML = keys.map(k=>{
-      const e = hist[k];
-      return `<div class="rh-row"><span class="rh-emoji">${weatherEmoji(e.weather)}</span><div><div class="rh-date">${fmt.format(new Date(k+'T00:00:00'))} · ⚡${e.energy}/5</div>${e.intention?`<div class="rh-text">${escapeHtml(e.intention)}</div>`:''}</div></div>`;
-    }).join('');
-  }
-}
-
-document.getElementById('historyTabs').querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=>{
-  insightsHistoryDays = parseInt(b.dataset.days,10);
-  document.getElementById('historyTabs').querySelectorAll('button').forEach(x=>x.classList.toggle('active', x===b));
-  renderInsights();
-}));
-
-/* ============================= MORNING RITUAL ============================= */
-let ritualSelectedWeather=null, breathTimers=[];
-function showRitualStep(id){
-  document.querySelectorAll('.ritual-step').forEach(s=>s.classList.remove('active'));
-  document.getElementById('rs-'+id).classList.add('active');
-}
-function refreshRitualStepText(){
-  const phase = getTimePhase();
-  const name = state.user ? state.user.name : (lang==='ar'?'صديقي':'friend');
-  document.getElementById('rsWelcomeEmoji').textContent = phase==='night' ? '🌙' : phase==='evening' ? '🌇' : '☀️';
-  document.getElementById('rsWelcomeTitle').textContent = t('greet_'+phase+'_title_name')(name);
-  document.getElementById('rsWelcomeSub').textContent = t('ritual_welcome_sub');
-  document.getElementById('rsBeginBtn').textContent = t('ritual_begin');
-}
-function startRitual(){
-  ritualSelectedWeather=null;
-  document.getElementById('energySlider').value=3; document.getElementById('energyVal').textContent='3';
-  document.getElementById('intentionInput').value=''; document.getElementById('gratitudeInput').value='';
-  document.querySelectorAll('.weather-opt').forEach(b=>b.classList.remove('selected'));
-  refreshRitualStepText();
-  document.getElementById('ritualOverlay').classList.remove('hidden');
-  showRitualStep('welcome');
-}
-function buildWeatherGrid(){
-  const grid = document.getElementById('weatherGrid'); grid.innerHTML='';
-  WEATHER.forEach(w=>{
-    const btn=document.createElement('button');
-    btn.className='weather-opt'+(ritualSelectedWeather===w.key?' selected':'');
-    btn.innerHTML = `${w.emoji}<small>${t('weather_'+w.key)}</small>`;
-    btn.addEventListener('click', ()=>{ ritualSelectedWeather=w.key; document.querySelectorAll('.weather-opt').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); });
-    grid.appendChild(btn);
-  });
-}
-document.getElementById('rsBeginBtn').addEventListener('click', ()=>{ showRitualStep('breathe'); runRitualBreathing(); });
-document.getElementById('ritualSkip').addEventListener('click', ()=>{ breathTimers.forEach(clearTimeout); document.getElementById('ritualOverlay').classList.add('hidden'); });
-document.getElementById('rsBreatheContinue').addEventListener('click', ()=>{ breathTimers.forEach(clearTimeout); showRitualStep('weather'); });
-document.getElementById('energySlider').addEventListener('input', e=>{ document.getElementById('energyVal').textContent = e.target.value; });
-document.getElementById('rsWeatherNext').addEventListener('click', ()=>{
-  if(!ritualSelectedWeather) ritualSelectedWeather='sunny';
-  showRitualStep('intention');
-});
-document.getElementById('rsIntentionNext').addEventListener('click', ()=>{
-  const entry = {
-    weather: ritualSelectedWeather || 'sunny',
-    energy: parseInt(document.getElementById('energySlider').value,10),
-    intention: document.getElementById('intentionInput').value.trim(),
-    gratitude: document.getElementById('gratitudeInput').value.trim(),
-    completedAt: new Date().toISOString()
-  };
-  state.ritual.history[todayKey()] = entry;
-  saveState();
-  recalcLifeScore();
-  const streak = state.streak;
-  document.getElementById('rsDoneSub').textContent = lang==='ar'
-    ? 'حفظنا نيتك على جهازك. رجعلها أي وقت من صفحة التحليلات.'
-    : "We've saved your intention on this device. You can revisit it anytime from Insights.";
-  document.getElementById('rsStreakCard').innerHTML = `<div class="tip-card"><div class="tip-icon">🔥</div><div class="tip-text"><b>${t('streak_days')(streak)}</b><p>${lang==='ar'?'سلسلة طقوس الصباح':'morning ritual streak'}</p></div></div>`;
-  showRitualStep('done');
-  renderHome(); renderInsights(); renderMemoryChips();
-});
-document.getElementById('rsEnterBtn').addEventListener('click', ()=>{
-  document.getElementById('ritualOverlay').classList.add('hidden');
-});
-function runRitualBreathing(){
-  breathTimers.forEach(clearTimeout);
-  const circle=document.getElementById('breathCircle'), stage=document.getElementById('breathStage'), count=document.getElementById('breathCount');
-  let breath=1;
-  function cycle(){
-    if(breath>3) return;
-    count.textContent = breath;
-    stage.textContent = t('breath_in'); circle.style.transform='scale(1.35)';
-    breathTimers.push(setTimeout(()=>{
-      stage.textContent = t('breath_hold');
-      breathTimers.push(setTimeout(()=>{
-        stage.textContent = t('breath_out'); circle.style.transform='scale(1)';
-        breathTimers.push(setTimeout(()=>{ breath++; cycle(); }, 2200));
-      }, 1200));
-    }, 2200));
-  }
-  cycle();
-}
-
-/* ============================= JOURNAL ============================= */
-let journalSelectedMood=null;
-function buildJournalMoodRow(){
-  const row = document.getElementById('journalMoodRow'); row.innerHTML='';
-  WEATHER.forEach(w=>{
-    const btn=document.createElement('button');
-    btn.className='mood-btn'+(journalSelectedMood===w.key?' selected':'');
-    btn.textContent=w.emoji; btn.title=t('weather_'+w.key);
-    btn.addEventListener('click', ()=>{
-      journalSelectedMood = journalSelectedMood===w.key ? null : w.key;
-      buildJournalMoodRow();
-    });
-    row.appendChild(btn);
-  });
-}
-const JOURNAL_PROMPTS = {
-  en: ["What's on my mind right now?", "One thing I'm grateful for", "What's stressing me out?", "A small win from today"],
-  ar: ["شو في بالي هلأ؟", "شي وحد أنا ممتن له", "شو ضاغط علي؟", "انتصار صغير من اليوم"]
-};
-function buildJournalSuggestRow(){
-  const row = document.getElementById('journalSuggestRow'); if(!row) return;
-  row.innerHTML='';
-  JOURNAL_PROMPTS[lang].forEach(p=>{
-    const c=document.createElement('button'); c.className='suggest-chip'; c.textContent=p;
-    c.addEventListener('click', ()=>{
-      const input=document.getElementById('journalInput');
-      input.value = input.value.trim() ? input.value.trim()+'\n'+p+' ' : p+' ';
-      input.focus();
-    });
-    row.appendChild(c);
-  });
-}
-document.getElementById('journalSaveBtn').addEventListener('click', ()=>{
-  const val = document.getElementById('journalInput').value.trim();
-  if(!val) return;
-  state.journal.push({ id: Date.now()+'-'+Math.random().toString(36).slice(2,7), date: todayKey(), ts: Date.now(), mood: journalSelectedMood, text: val });
-  saveState();
-  document.getElementById('journalInput').value='';
-  journalSelectedMood=null; buildJournalMoodRow();
-  const btn=document.getElementById('journalSaveBtn'); const old=btn.textContent;
-  btn.textContent = t('journal_saved_toast');
-  setTimeout(()=>{ btn.textContent = t('journal_save'); }, 1200);
-  recalcLifeScore(); renderHome(); renderJournal(); renderMemoryChips();
-});
-document.getElementById('journalSearch').addEventListener('input', renderJournal);
-function renderJournal(){
-  buildJournalMoodRow();
-  buildJournalSuggestRow();
-  const q = document.getElementById('journalSearch').value.trim().toLowerCase();
-  const entries = state.journal.slice().sort((a,b)=>b.ts-a.ts).filter(e=> !q || e.text.toLowerCase().includes(q));
-  document.getElementById('journalCount').textContent = state.journal.length ? ` (${state.journal.length})` : '';
-  document.getElementById('journalEmpty').style.display = state.journal.length ? 'none' : 'block';
-  const fmt = new Intl.DateTimeFormat(lang==='ar'?'ar':'en', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
-  const list = document.getElementById('journalList');
-  list.innerHTML = entries.map(e=>`
-    <div class="journal-entry">
-      <div class="je-meta">
-        <span>${fmt.format(new Date(e.ts))}${e.mood?` · <span class="je-mood">${weatherEmoji(e.mood)}</span>`:''}</span>
-        <button class="je-del" data-id="${e.id}">${lang==='ar'?'حذف':'delete'}</button>
+  const list = document.getElementById('sectionsList');
+  list.innerHTML = PROPOSAL_SECTIONS.map(s=>{
+    const st = state.sections[s.key].status;
+    return `<div class="section-row" data-section="${s.key}">
+      <span class="section-row-dot" style="${sectionDotStyle(s.hue)}"></span>
+      <div class="section-row-text">
+        <div class="section-row-title">${s.label}</div>
+        <div class="section-row-sub">${s.en}</div>
       </div>
-      <div class="je-text">${escapeHtml(e.text)}</div>
+      ${statusPillHtml(st)}
+    </div>`;
+  }).join('');
+  list.querySelectorAll('[data-section]').forEach(r=> r.addEventListener('click', ()=> openSectionModal(r.dataset.section)));
+
+  document.getElementById('gapKnown').value = state.gap.known;
+  document.getElementById('gapUnknown').value = state.gap.unknown;
+  document.getElementById('gapStatement').value = state.gap.gapStatement;
+  document.getElementById('gapYourStudy').value = state.gap.yourStudy;
+  const gapLinked = state.sections.aim.status !== 'pending';
+  const gapHasContent = state.gap.gapStatement.trim().length > 0;
+  document.getElementById('gapWarning').style.display = (gapHasContent && !gapLinked) ? 'flex' : 'none';
+
+  document.getElementById('aimStatement').value = state.aim.statement;
+  const qWrap = document.getElementById('aimQuestionsList');
+  qWrap.innerHTML = [0,1,2].map(i=>`
+    <div class="aim-question-row">
+      <span class="aim-q-num">${i+1}</span>
+      <input class="aim-q-input" data-q="${i}" value="${escapeHtml(state.aim.questions[i]||'')}" placeholder="سؤال بحث رقم ${i+1}">
+    </div>`).join('');
+
+  document.getElementById('methodSetting').value = state.methodology.setting;
+  document.getElementById('methodPopulation').value = state.methodology.population;
+  document.getElementById('methodInclusion').value = state.methodology.inclusion;
+  document.getElementById('methodExclusion').value = state.methodology.exclusion;
+  document.getElementById('methodSampleSize').value = state.methodology.sampleSize;
+  document.getElementById('methodSamplingTech').value = state.methodology.samplingTechnique;
+  document.getElementById('designChips').querySelectorAll('.chip-toggle').forEach(c=> c.classList.toggle('selected', c.dataset.val===state.methodology.design));
+  document.getElementById('studyToolChips').querySelectorAll('.chip-toggle').forEach(c=> c.classList.toggle('selected', c.dataset.val===state.methodology.studyTool));
+  document.getElementById('dataCollectionChips').querySelectorAll('.chip-toggle').forEach(c=> c.classList.toggle('selected', state.methodology.dataCollection.includes(c.dataset.val)));
+}
+
+/* gap + aim autosave on blur */
+['gapKnown','gapUnknown','gapStatement','gapYourStudy'].forEach(id=>{
+  const map = {gapKnown:'known', gapUnknown:'unknown', gapStatement:'gapStatement', gapYourStudy:'yourStudy'};
+  document.getElementById(id).addEventListener('change', e=>{
+    state.gap[map[id]] = e.target.value;
+    saveState();
+    renderHome(); renderProposal();
+  });
+});
+document.getElementById('aimStatement').addEventListener('change', e=>{ state.aim.statement = e.target.value; saveState(); });
+document.getElementById('aimQuestionsList').addEventListener('change', e=>{
+  if(e.target.dataset.q===undefined) return;
+  state.aim.questions[parseInt(e.target.dataset.q,10)] = e.target.value;
+  saveState();
+});
+['methodSetting','methodPopulation','methodInclusion','methodExclusion','methodSampleSize','methodSamplingTech'].forEach(id=>{
+  const map = {methodSetting:'setting', methodPopulation:'population', methodInclusion:'inclusion', methodExclusion:'exclusion', methodSampleSize:'sampleSize', methodSamplingTech:'samplingTechnique'};
+  document.getElementById(id).addEventListener('change', e=>{ state.methodology[map[id]] = e.target.value; saveState(); });
+});
+document.getElementById('designChips').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip-toggle'); if(!chip) return;
+  state.methodology.design = state.methodology.design===chip.dataset.val ? '' : chip.dataset.val;
+  saveState();
+  document.getElementById('designChips').querySelectorAll('.chip-toggle').forEach(c=> c.classList.toggle('selected', c.dataset.val===state.methodology.design));
+});
+document.getElementById('studyToolChips').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip-toggle'); if(!chip) return;
+  state.methodology.studyTool = state.methodology.studyTool===chip.dataset.val ? '' : chip.dataset.val;
+  saveState();
+  document.getElementById('studyToolChips').querySelectorAll('.chip-toggle').forEach(c=> c.classList.toggle('selected', c.dataset.val===state.methodology.studyTool));
+});
+document.getElementById('dataCollectionChips').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip-toggle'); if(!chip) return;
+  const v = chip.dataset.val;
+  const i = state.methodology.dataCollection.indexOf(v);
+  if(i===-1) state.methodology.dataCollection.push(v); else state.methodology.dataCollection.splice(i,1);
+  saveState();
+  chip.classList.toggle('selected', state.methodology.dataCollection.includes(v));
+});
+
+/* ============================= SECTION EDIT MODAL ============================= */
+function openSectionModal(key){
+  const s = PROPOSAL_SECTIONS.find(x=>x.key===key);
+  const cur = state.sections[key];
+  openView(`
+    <h2 style="margin-bottom:2px;">${s.label}</h2>
+    <p style="color:var(--ink-faint);font-size:12px;margin:0 0 16px;">${s.en}</p>
+    <div class="chip-toggle-row" id="modalStatusChips" style="margin-bottom:16px;">
+      <button class="chip-toggle ${cur.status==='pending'?'selected':''}" data-st="pending">لم يبدأ</button>
+      <button class="chip-toggle ${cur.status==='progress'?'selected':''}" data-st="progress">قيد العمل</button>
+      <button class="chip-toggle ${cur.status==='done'?'selected':''}" data-st="done">مكتمل</button>
     </div>
-  `).join('');
-  list.querySelectorAll('.je-del').forEach(b=> b.addEventListener('click', ()=>{
-    if(!confirm(lang==='ar' ? 'حذف هذه المذكرة؟' : 'Delete this entry?')) return;
-    state.journal = state.journal.filter(e=>e.id!==b.dataset.id);
-    saveState(); recalcLifeScore(); renderHome(); renderJournal(); renderMemoryChips();
+    <div class="form-field">
+      <label>ملاحظات</label>
+      <textarea id="modalSectionNote" placeholder="أي ملاحظات حول هذا القسم...">${escapeHtml(cur.note)}</textarea>
+    </div>
+    ${key==='litreview' ? `<button class="pill-btn ghost" id="modalGoLit" style="margin-bottom:10px;">فتح مكتبة الأدبيات</button>` : ''}
+    <button class="pill-btn" id="modalSaveSection" style="background:var(--btn-bg);color:var(--btn-ink);">حفظ</button>
+  `);
+  let pickedStatus = cur.status;
+  document.getElementById('modalStatusChips').querySelectorAll('.chip-toggle').forEach(c=>{
+    c.addEventListener('click', ()=>{
+      pickedStatus = c.dataset.st;
+      document.getElementById('modalStatusChips').querySelectorAll('.chip-toggle').forEach(x=>x.classList.toggle('selected', x===c));
+    });
+  });
+  const goLit = document.getElementById('modalGoLit');
+  if(goLit) goLit.addEventListener('click', ()=>{ closeView(); showScreen('literature'); });
+  document.getElementById('modalSaveSection').addEventListener('click', ()=>{
+    state.sections[key].status = pickedStatus;
+    state.sections[key].note = document.getElementById('modalSectionNote').value.trim();
+    saveState();
+    closeView();
+    renderHome(); renderProposal();
+  });
+}
+
+/* ============================= LITERATURE ============================= */
+let litFilterKey = 'all';
+function renderLiterature(){
+  document.getElementById('litStatCollected').textContent = state.studies.length;
+  document.getElementById('litStatReviewed').textContent = state.studies.filter(s=>s.reviewed).length;
+  document.getElementById('litStatRemaining').textContent = state.studies.filter(s=>!s.reviewed).length;
+
+  const filterRow = document.getElementById('litFilterRow');
+  filterRow.innerHTML = LIT_FILTERS.map(f=>`<button class="filter-chip ${f.key===litFilterKey?'active':''}" data-filter="${f.key}">${f.label}</button>`).join('');
+  filterRow.querySelectorAll('.filter-chip').forEach(c=> c.addEventListener('click', ()=>{
+    litFilterKey = c.dataset.filter;
+    renderLiterature();
+  }));
+
+  const filtered = state.studies.filter(s=> litFilterKey==='all' || s.theme_tag===litFilterKey);
+  const wrap = document.getElementById('studiesByTheme');
+  document.getElementById('studiesEmpty').style.display = filtered.length ? 'none' : 'block';
+  wrap.innerHTML = THEMES.map(theme=>{
+    const inTheme = filtered.filter(s=>s.theme===theme);
+    if(!inTheme.length) return '';
+    return `<div class="theme-header"><b>${theme}</b><span class="theme-count">${inTheme.length} دراسة</span></div>` +
+      inTheme.map(studyCardHtml).join('');
+  }).join('');
+  wrap.querySelectorAll('.study-tag.toggle-reviewed').forEach(t=> t.addEventListener('click', e=>{
+    e.stopPropagation();
+    const id = t.dataset.id;
+    const study = state.studies.find(s=>s.id===id);
+    study.reviewed = !study.reviewed;
+    saveState();
+    renderLiterature(); renderHome();
+  }));
+  wrap.querySelectorAll('.study-del').forEach(b=> b.addEventListener('click', e=>{
+    e.stopPropagation();
+    if(!confirm('حذف هذه الدراسة؟')) return;
+    state.studies = state.studies.filter(s=>s.id!==b.dataset.id);
+    saveState();
+    renderLiterature(); renderHome();
   }));
 }
-function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-/* ============================= AI MEMORY ============================= */
-const STOPWORDS = new Set([
-  'the','and','a','an','to','of','in','is','it','i','my','me','for','on','with','was','that','this','am',
-  "i'm",'im','be','so','just','today','feel','feeling','felt','really','very','have','has had','but','not',
-  'في','من','على','إلى','عن','هذا','هذه','أنا','انا','كان','كانت','مع','أو','او','لا','ما','هو','هي','بس','علشان','كل','يوم','اليوم','كنت','عشان','ليش','وايد','شوي'
-]);
-function extractTopKeyword(){
-  const texts = [
-    ...state.journal.map(e=>e.text),
-    ...Object.values(state.ritual.history).map(e=>e.intention+' '+e.gratitude)
-  ].join(' ');
-  const words = texts.match(/[\p{L}]+/gu) || [];
-  const counts = {};
-  words.forEach(w=>{
-    const lw = w.toLowerCase();
-    if(lw.length<4 || STOPWORDS.has(lw)) return;
-    counts[lw] = (counts[lw]||0)+1;
+function studyCardHtml(s){
+  const filterLabel = (LIT_FILTERS.find(f=>f.key===s.theme_tag)||{}).label || '';
+  return `<div class="study-card">
+    <button class="study-del" data-id="${s.id}">✕</button>
+    <div class="study-title">${escapeHtml(s.title)}</div>
+    <div class="study-meta">${escapeHtml(s.authors)} · ${s.year}</div>
+    <div class="study-tags">
+      <span class="study-tag">${escapeHtml(s.theme)}</span>
+      <span class="study-tag">${filterLabel}</span>
+      <span class="study-tag toggle-reviewed ${s.reviewed?'reviewed':'not-reviewed'}" data-id="${s.id}">${s.reviewed?'تمت المراجعة':'لم تُراجع بعد'}</span>
+    </div>
+    <div class="study-row-label">أهم النتائج</div>
+    <div class="study-text">${escapeHtml(s.keyFinding)}</div>
+    ${s.relevance ? `<div class="study-row-label">الصلة بدراستك</div><div class="study-text">${escapeHtml(s.relevance)}</div>` : ''}
+    <div class="study-ref">${escapeHtml(s.reference)}</div>
+  </div>`;
+}
+document.getElementById('addStudyBtn').addEventListener('click', ()=>{
+  openView(`
+    <h2 style="margin-bottom:14px;">إضافة دراسة</h2>
+    <div class="form-field"><label>العنوان</label><input id="fsTitle" placeholder="عنوان الدراسة"></div>
+    <div class="form-field"><label>الباحثون</label><input id="fsAuthors" placeholder="مثال: Al-Harbi et al."></div>
+    <div class="form-field"><label>السنة</label><input id="fsYear" type="number" placeholder="2024"></div>
+    <div class="form-field"><label>الموضوع البحثي — Theme</label>
+      <select id="fsTheme">${THEMES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
+    </div>
+    <div class="form-field"><label>القسم المرتبط</label>
+      <select id="fsSectionTag">${LIT_FILTERS.filter(f=>f.key!=='all').map(f=>`<option value="${f.key}">${f.label}</option>`).join('')}</select>
+    </div>
+    <div class="form-field"><label>أهم النتائج</label><textarea id="fsKeyFinding" placeholder="أبرز ما توصلت له الدراسة"></textarea></div>
+    <div class="form-field"><label>الصلة بدراستك</label><textarea id="fsRelevance" placeholder="كيف تخدم دراستك؟"></textarea></div>
+    <div class="form-field"><label>المرجع</label><input id="fsReference" placeholder="مثال: J Clin Nurs. 2023;32(4):612-620"></div>
+    <div class="chip-toggle-row" style="margin-bottom:16px;">
+      <button class="chip-toggle" id="fsReviewedToggle" data-on="0">لم تُراجع بعد</button>
+    </div>
+    <button class="pill-btn" id="fsSave" style="background:var(--btn-bg);color:var(--btn-ink);">حفظ الدراسة</button>
+  `);
+  const reviewedBtn = document.getElementById('fsReviewedToggle');
+  reviewedBtn.addEventListener('click', ()=>{
+    const on = reviewedBtn.dataset.on==='1';
+    reviewedBtn.dataset.on = on ? '0' : '1';
+    reviewedBtn.textContent = on ? 'لم تُراجع بعد' : 'تمت المراجعة';
+    reviewedBtn.classList.toggle('selected', !on);
   });
-  let top=null, max=1;
-  Object.keys(counts).forEach(w=>{ if(counts[w]>max){ max=counts[w]; top=w; } });
-  return top ? {word:top, count:max} : null;
-}
-function renderMemoryChips(){
-  const wrap = document.getElementById('memoryChips'); if(!wrap) return;
-  const chips=[];
-  if(state.streak>=2) chips.push(`🔥 ${t('streak_days')(state.streak)}`);
-  if(state.journal.length>0) chips.push(lang==='ar' ? `📝 ${state.journal.length} مذكرة مسجلة` : `📝 ${state.journal.length} entries written`);
-  const kw = extractTopKeyword();
-  if(kw) chips.push(lang==='ar' ? `💭 "${kw.word}" تكررت ${kw.count} مرات` : `💭 "${kw.word}" mentioned ${kw.count}×`);
-  const energies=[];
-  for(let i=0;i<6;i++){ const e=state.ritual.history[dateKeyOffset(-i)]; if(e) energies.push({i,e:e.energy}); }
-  if(energies.length>=2){
-    const recent = energies.slice(0, Math.ceil(energies.length/2)).reduce((a,b)=>a+b.e,0)/Math.ceil(energies.length/2);
-    const older = energies.slice(Math.ceil(energies.length/2)).reduce((a,b)=>a+b.e,0)/Math.max(1,energies.length-Math.ceil(energies.length/2));
-    if(recent-older>=0.6) chips.push(lang==='ar' ? '📈 طاقتك تحسّنت آخر كم يوم' : '📈 Your energy has been trending up');
-    else if(older-recent>=0.6) chips.push(lang==='ar' ? '📉 طاقتك أقل شوي آخر كم يوم' : '📉 Your energy has dipped a bit lately');
-  }
-  if(!chips.length) chips.push(lang==='ar' ? '🌱 لسا بنتعرف على بعض' : "🌱 We're just getting to know each other");
-  wrap.innerHTML = chips.map(c=>`<span class="mem-chip">${c}</span>`).join('');
-}
-
-const POS_WORDS = ['happy','good','great','grateful','proud','excited','calm','peace','love','amazing','عظيم','فرحان','ممتن','فخور','مبسوط','هادي','حلو','رائع'];
-const NEG_WORDS = ['stress','stressed','anxious','tired','sad','angry','worried','overwhelmed','exhausted','lonely','متوتر','قلقان','تعبان','حزين','زعلان','خايف','مرهق','ضغط'];
-function pickRandom(arr, avoid){
-  if(arr.length===1) return arr[0];
-  let choice = arr[Math.floor(Math.random()*arr.length)];
-  if(avoid && choice===avoid){ const rest = arr.filter(x=>x!==avoid); choice = rest[Math.floor(Math.random()*rest.length)]; }
-  return choice;
-}
-const NEG_BASES = {
-  en: ["I hear you. That's a real feeling, and it's worth sitting with instead of pushing away.",
-       "That sounds heavy. Thank you for naming it instead of brushing past it.",
-       "It makes sense you'd feel that way — that's a lot to carry."],
-  ar: ["سمعتك. هذا الإحساس مشروع، وما لازم تتجاهله.",
-       "يبدو هذا ثقيل عليك. شكراً إنك سميته بدل ما تتجاوزه.",
-       "طبيعي تحس كذا، خصوصاً مع كل اللي عندك."]
-};
-const NEG_NUDGES = {
-  en: [" Want to try two minutes of slow breathing together?",
-       " Sometimes writing it down in your journal helps it feel smaller.",
-       " A short walk or a glass of water might take the edge off."],
-  ar: [" تحب ناخذ دقيقتين تنفس هادي سوا؟",
-       " أحياناً كتابتها بالمذكرة تخليها تحس أصغر.",
-       " مشية قصيرة أو كاس مويه ممكن تخفف الحدة."]
-};
-const POS_REPLIES = {
-  en: n=>[
-    `That's genuinely good to hear — let it land.${n>=2?` Your ${t('streak_days')(n)} streak shows you're being consistent.`:''}`,
-    `Love that for you. Little wins like this add up more than they feel like they do.`,
-    `That's worth savoring for a second before the day pulls you forward.`
-  ],
-  ar: n=>[
-    `حلو جداً — استمتع فيه.${n>=2?` وسلسلتك ${t('streak_days')(n)} تشهد إنك ثابت.`:''}`,
-    `يسعدني هالشي فعلاً. الانتصارات الصغيرة زي هذي بتتراكم أكثر مما تحس.`,
-    `يستاهل توقف عندها ثانية قبل ما اليوم يشدك قدام.`
-  ]
-};
-const NEUTRAL_REPLIES = {
-  en: ["Got it — tell me a bit more. What's taking up the most space in your mind right now?",
-       "Thanks for sharing that. What would make the rest of today feel a little easier?",
-       "Noted. Is this something you'd want to put in your journal too?"],
-  ar: ["تمام، خلّيني أفهم أكثر — شو أكثر شي مركز عليه ذهنك هلأ؟",
-       "شكراً إنك شاركتني. شو ممكن يخلي باقي يومك أسهل شوي؟",
-       "تم. تحب تحطها بمذكرتك كمان؟"]
-};
-let lastAIReply=null;
-const TIP_TEMPLATES = {
-  en: [
-    "Try a 10-minute walk outside — morning light is one of the fastest ways to steady your energy.",
-    "Drink a full glass of water right now — mild dehydration shows up as low mood before you notice it.",
-    "Two minutes of slow breathing (4 in, 4 hold, 6 out) can lower your heart rate almost immediately.",
-    "Write down just one sentence in your journal — momentum matters more than length.",
-    "Step away from your screen for five minutes and look at something far away.",
-  ],
-  ar: [
-    "جرب تمشي 10 دقايق برا — ضوء الصبح من أسرع الطرق تثبّت طاقتك.",
-    "اشرب كاس مويه كامل هلأ — قلة المويه تبين كمزاج منخفض قبل ما تحس فيها.",
-    "دقيقتين تنفس بطيء (شهيق 4، حبس 4، زفير 6) بينزل نبضك تقريباً فوراً.",
-    "اكتب جملة وحدة بس بمذكرتك — الاستمرارية أهم من الطول.",
-    "ابعد عن الشاشة خمس دقايق وحدّق بشي بعيد.",
-  ]
-};
-function detectSentiment(text){
-  const lower = text.toLowerCase();
-  const pos = POS_WORDS.some(w=>lower.includes(w));
-  const neg = NEG_WORDS.some(w=>lower.includes(w));
-  if(neg && !pos) return 'neg';
-  if(pos && !neg) return 'pos';
-  return 'neutral';
-}
-function wantsTip(text){ return /tip|advice|help|suggest|نصيح|ساعد|اقترح/i.test(text); }
-function wantsProgress(text){ return /how am i|progress|doing|تقدم|كيف حال|كيف اداء/i.test(text); }
-function generateAIReply(text){
-  if(wantsProgress(text)){
-    const today = state.scoreHistory[todayKey()];
-    const scoreTxt = today ? today.total : 0;
-    return lang==='ar'
-      ? `نقاطك اليوم ${scoreTxt}/100، وعندك سلسلة ${t('streak_days')(state.streak)} من طقوس الصباح. ${state.journal.length?`كتبت ${state.journal.length} مذكرة لهلق.`:'جرب تكتب أول مذكرة، بتساعدك تشوف نفسك أوضح.'}`
-      : `You're at ${scoreTxt}/100 today, with a ${t('streak_days')(state.streak)} morning-ritual streak. ${state.journal.length?`You've written ${state.journal.length} journal entries so far.`:'Try writing your first journal entry — it helps patterns show up faster.'}`;
-  }
-  if(wantsTip(text)){
-    const list = TIP_TEMPLATES[lang];
-    return list[Math.floor(Math.random()*list.length)];
-  }
-  const sentiment = detectSentiment(text);
-  const kw = extractTopKeyword();
-  let reply;
-  if(sentiment==='neg'){
-    const base = pickRandom(NEG_BASES[lang]);
-    const ref = (kw && Math.random()<0.5) ? (lang==='ar' ? ` لاحظت إنك ذكرت "${kw.word}" أكثر من مرة — يمكن مرتبط بهذا.` : ` I've noticed "${kw.word}" has come up more than once for you — might be connected.`) : '';
-    const nudge = pickRandom(NEG_NUDGES[lang]);
-    reply = base+ref+nudge;
-  } else if(sentiment==='pos'){
-    reply = pickRandom(POS_REPLIES[lang](state.streak));
-  } else {
-    reply = pickRandom(NEUTRAL_REPLIES[lang]);
-  }
-  if(reply===lastAIReply){
-    const pool = sentiment==='neg' ? NEG_BASES[lang].map(b=>b) : sentiment==='pos' ? POS_REPLIES[lang](state.streak) : NEUTRAL_REPLIES[lang];
-    reply = pickRandom(pool, reply);
-  }
-  lastAIReply = reply;
-  return reply;
-}
-const chatWrap = document.getElementById('chatWrap');
-function addMsg(text, who){
-  const div=document.createElement('div'); div.className='msg '+who; div.textContent=text; chatWrap.appendChild(div);
-  chatWrap.scrollTop = chatWrap.scrollHeight;
-  return div;
-}
-function addQuickReplies(){
-  const wrap=document.createElement('div'); wrap.className='quick-replies';
-  ['qr_stressed','qr_tip','qr_proud','qr_progress'].forEach(k=>{
-    const c=document.createElement('button'); c.className='chip'; c.textContent=t(k);
-    c.addEventListener('click', ()=>{ document.getElementById('chatInput').value=t(k); sendChat(); });
-    wrap.appendChild(c);
-  });
-  chatWrap.appendChild(wrap);
-}
-function renderChat(){
-  chatWrap.innerHTML='';
-  if(!state.chatLog.length){
-    addMsg(t('coach_welcome'), 'ai');
-    addQuickReplies();
-  } else {
-    state.chatLog.forEach(m=> addMsg(m.text, m.who));
-    const lastAi = [...state.chatLog].reverse().find(m=>m.who==='ai');
-    if(lastAi) lastAIReply = lastAi.text;
-  }
-}
-function sendChat(){
-  const input=document.getElementById('chatInput');
-  const val=input.value.trim(); if(!val) return;
-  addMsg(val,'user'); state.chatLog.push({who:'user', text:val, ts:Date.now()});
-  input.value='';
-  const typing=document.createElement('div'); typing.className='typing'; typing.innerHTML='<span></span><span></span><span></span>';
-  chatWrap.appendChild(typing); chatWrap.scrollTop=chatWrap.scrollHeight;
-  setTimeout(()=>{
-    typing.remove();
-    const reply = generateAIReply(val);
-    addMsg(reply,'ai'); state.chatLog.push({who:'ai', text:reply, ts:Date.now()});
-    if(state.chatLog.length>60) state.chatLog = state.chatLog.slice(-60);
+  document.getElementById('fsSave').addEventListener('click', ()=>{
+    const title = document.getElementById('fsTitle').value.trim();
+    if(!title) return;
+    state.studies.push({
+      id: newId(),
+      title,
+      authors: document.getElementById('fsAuthors').value.trim(),
+      year: parseInt(document.getElementById('fsYear').value,10) || new Date().getFullYear(),
+      theme: document.getElementById('fsTheme').value,
+      theme_tag: document.getElementById('fsSectionTag').value,
+      keyFinding: document.getElementById('fsKeyFinding').value.trim(),
+      relevance: document.getElementById('fsRelevance').value.trim(),
+      reference: document.getElementById('fsReference').value.trim(),
+      reviewed: reviewedBtn.dataset.on==='1'
+    });
     saveState();
-  }, 500+Math.random()*500);
+    closeView();
+    renderLiterature(); renderHome();
+  });
+});
+
+/* ============================= TASKS ============================= */
+function renderTasks(){
+  const total = state.tasks.length;
+  const done = state.tasks.filter(t=>t.status==='done').length;
+  document.getElementById('tasksSummaryText').textContent = `${done} من ${total} مهمة مكتملة.`;
+
+  const open = state.tasks.filter(t=>t.status!=='done').slice().sort((a,b)=>a.deadline.localeCompare(b.deadline));
+  const doneList = state.tasks.filter(t=>t.status==='done').slice().sort((a,b)=>b.deadline.localeCompare(a.deadline));
+
+  document.getElementById('tasksOpenList').innerHTML = open.map(taskRowHtml).join('') || `<p class="empty-note">ما في مهام مفتوحة — أضف مهمة جديدة.</p>`;
+  document.getElementById('tasksDoneEmpty').style.display = doneList.length ? 'none' : 'block';
+  document.getElementById('tasksDoneList').innerHTML = doneList.map(taskRowHtml).join('');
+
+  document.querySelectorAll('.task-status-btn').forEach(b=> b.addEventListener('click', ()=>{
+    const task = state.tasks.find(t=>t.id===b.dataset.id);
+    const order = ['not_started','progress','done'];
+    task.status = order[(order.indexOf(task.status)+1) % order.length];
+    saveState();
+    renderTasks(); renderHome();
+  }));
+  document.querySelectorAll('.task-del').forEach(b=> b.addEventListener('click', ()=>{
+    if(!confirm('حذف هذه المهمة؟')) return;
+    state.tasks = state.tasks.filter(t=>t.id!==b.dataset.id);
+    saveState();
+    renderTasks(); renderHome();
+  }));
 }
-document.getElementById('chatSend').addEventListener('click', sendChat);
-document.getElementById('chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });
+function taskRowHtml(t){
+  const overdue = t.status!=='done' && daysUntil(t.deadline) < 0;
+  const icon = t.status==='done' ? '✓' : '';
+  return `<div class="task-row ${t.status==='done'?'is-done':''}">
+    <button class="task-status-btn ${t.status}" data-id="${t.id}">${icon}</button>
+    <div class="task-text">
+      <div class="task-title">${escapeHtml(t.title)}</div>
+      <div class="task-meta">
+        <span class="priority-badge ${t.priority}">${PRIORITY_LABEL[t.priority]}</span>
+        <span class="task-deadline ${overdue?'overdue':''}">${fmtDate(t.deadline)}</span>
+      </div>
+    </div>
+    <button class="task-del" data-id="${t.id}">✕</button>
+  </div>`;
+}
+document.getElementById('addTaskBtn').addEventListener('click', ()=>{
+  openView(`
+    <h2 style="margin-bottom:14px;">مهمة جديدة</h2>
+    <div class="form-field"><label>عنوان المهمة</label><input id="ftTitle" placeholder="مثال: كتابة Ethical Considerations"></div>
+    <div class="form-field"><label>الأولوية</label>
+      <div class="chip-toggle-row" id="ftPriorityChips">
+        <button class="chip-toggle selected" data-val="medium">متوسطة</button>
+        <button class="chip-toggle" data-val="high">عالية</button>
+        <button class="chip-toggle" data-val="low">منخفضة</button>
+      </div>
+    </div>
+    <div class="form-field"><label>الموعد النهائي</label><input id="ftDeadline" type="date" value="${todayKey()}"></div>
+    <button class="pill-btn" id="ftSave" style="background:var(--btn-bg);color:var(--btn-ink);">إضافة المهمة</button>
+  `);
+  let priority = 'medium';
+  document.getElementById('ftPriorityChips').querySelectorAll('.chip-toggle').forEach(c=> c.addEventListener('click', ()=>{
+    priority = c.dataset.val;
+    document.getElementById('ftPriorityChips').querySelectorAll('.chip-toggle').forEach(x=>x.classList.toggle('selected', x===c));
+  }));
+  document.getElementById('ftSave').addEventListener('click', ()=>{
+    const title = document.getElementById('ftTitle').value.trim();
+    if(!title) return;
+    state.tasks.push({ id:newId(), title, priority, deadline: document.getElementById('ftDeadline').value || todayKey(), status:'not_started' });
+    saveState();
+    closeView();
+    renderTasks(); renderHome();
+  });
+});
 
 /* ============================= ONBOARDING ============================= */
-let obSelectedGoal=null;
-const OB_GOALS = [
-  {key:'calm', emoji:'🌿'}, {key:'habits', emoji:'🔁'}, {key:'journal', emoji:'📓'}, {key:'energy', emoji:'⚡'}
-];
-function buildGoalOptions(){
-  const wrap=document.getElementById('obGoalOptions'); if(!wrap) return; wrap.innerHTML='';
-  OB_GOALS.forEach(g=>{
-    const b=document.createElement('button'); b.className='ob-opt'+(obSelectedGoal===g.key?' selected':'');
-    b.innerHTML = `<span class="ob-emoji">${g.emoji}</span><span>${t('ob_goal_'+g.key)}</span>`;
-    b.addEventListener('click', ()=>{ obSelectedGoal=g.key; buildGoalOptions(); });
-    wrap.appendChild(b);
-  });
-}
 document.getElementById('obNameNext').addEventListener('click', ()=>{
   const name = document.getElementById('obNameInput').value.trim();
-  state.user = { name: name || (lang==='ar'?'صديقي':'Friend') };
+  state.user = { name: name || 'صديق/ة البحث', thesisTitle: '' };
   saveState();
   document.getElementById('obStepName').classList.remove('active');
-  document.getElementById('obStepGoal').classList.add('active');
+  document.getElementById('obStepTitle').classList.add('active');
   document.querySelectorAll('.ob-progress i')[1].classList.add('on');
 });
-document.getElementById('obLangToggle').addEventListener('click', ()=> setLang(lang==='ar'?'en':'ar'));
-document.getElementById('obGoalNext').addEventListener('click', ()=>{
-  state.goal = obSelectedGoal;
+document.getElementById('obTitleNext').addEventListener('click', ()=>{
+  state.user.thesisTitle = document.getElementById('obTitleInput').value.trim();
   state.onboarded = true;
   saveState();
   document.getElementById('onboardOverlay').classList.add('hidden');
   renderHome();
-  maybeShowRitual();
 });
-function maybeShowRitual(){
-  if(!state.ritual.history[todayKey()]) startRitual();
-  else document.getElementById('ritualOverlay').classList.add('hidden');
-}
 
 /* ============================= SETTINGS ============================= */
 const settingsOverlay=document.getElementById('settingsOverlay');
 document.getElementById('settingsBtn').addEventListener('click', ()=>{ renderSettingsUI(); settingsOverlay.classList.add('active'); });
 document.getElementById('settingsClose').addEventListener('click', ()=> settingsOverlay.classList.remove('active'));
 settingsOverlay.addEventListener('click', e=>{ if(e.target===settingsOverlay) settingsOverlay.classList.remove('active'); });
-document.getElementById('langToggle').addEventListener('click', ()=> setLang(lang==='ar'?'en':'ar'));
-document.getElementById('langSeg').querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=> setLang(b.dataset.lang)));
 document.getElementById('darkToggle').addEventListener('click', ()=>{
   state.dark=!state.dark; saveState(); document.body.classList.toggle('dark', state.dark); renderSettingsUI();
-  renderPerformanceGrid();
-  if(currentDomainKey && document.getElementById('screen-domain').classList.contains('active')) renderDomainScreen();
 });
-document.getElementById('waterGoalSeg').querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=>{
-  state.waterGoal = parseInt(b.dataset.val,10);
-  if(state.water.count>state.waterGoal) state.water.count=state.waterGoal;
-  saveState(); renderSettingsUI(); renderHome();
-}));
 document.getElementById('exportBtn').addEventListener('click', ()=>{
   const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='morning-os-data.json';
+  const a = document.createElement('a'); a.href=url; a.download='bahthi-data.json';
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 });
 document.getElementById('resetBtn').addEventListener('click', ()=>{
-  if(!confirm(t('settings_reset_confirm'))) return;
-  localStorage.removeItem('morningOS_state');
+  if(!confirm('هذا بيمسح كل بيانات بحثك المحفوظة على جهازك. ما ينرجع بعدين. تكمل؟')) return;
+  localStorage.removeItem('bahthi_state');
   location.reload();
 });
 function renderSettingsUI(){
-  document.getElementById('langSeg').querySelectorAll('button').forEach(b=> b.classList.toggle('active', b.dataset.lang===lang));
   document.getElementById('darkToggle').classList.toggle('on', !!state.dark);
-  document.getElementById('waterGoalSeg').querySelectorAll('button').forEach(b=> b.classList.toggle('active', parseInt(b.dataset.val,10)===state.waterGoal));
 }
 
 /* ============================= BOOT ============================= */
 function bootApp(){
   document.body.classList.toggle('dark', !!state.dark);
-  ensureWaterDay();
-  buildJournalMoodRow();
-  applyLanguage();
   if(!state.onboarded){
     document.getElementById('onboardOverlay').classList.remove('hidden');
   } else {
     document.getElementById('onboardOverlay').classList.add('hidden');
-    maybeShowRitual();
   }
+  renderHome();
   staggerReveal('.card, .bento', document.getElementById('screen-home'));
-  setInterval(initHero, 5*60*1000);
 }
 bootApp();
 

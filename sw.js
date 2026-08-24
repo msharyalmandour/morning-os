@@ -1,10 +1,9 @@
-const CACHE_NAME = 'morning-os-v3';
+const CACHE_NAME = 'bahthi-v1';
 const APP_SHELL = [
   './',
   './index.html',
   './css/style.css',
-  './js/i18n.js',
-  './js/lessons.js',
+  './js/data.js',
   './js/app.js',
   './manifest.webmanifest',
   './icons/icon.svg',
