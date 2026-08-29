@@ -12,11 +12,13 @@ const DEFAULT_STATE = {
   waterGoal: 8,
   water: { date: null, count: 0 },
   ritual: { history: {} },  // { 'YYYY-MM-DD': {weather, energy, intention, gratitude, completedAt} }
-  journal: [],               // [{id, date, ts, mood, text}]
+  journal: [],               // [{id, date, ts, mood, text, trigger}]
   scoreHistory: {},          // { 'YYYY-MM-DD': {total, breakdown} }
-  streak: 0,
+  streak: 0,                 // momentum score, 0-100 (name kept for storage back-compat)
   chatLog: [],               // [{who:'ai'|'user', text, ts}]
-  performance: defaultPerformance() // { [domainKey]: { history: {'YYYY-MM-DD': true} } }
+  performance: defaultPerformance(), // { [domainKey]: { history: {'YYYY-MM-DD': true} } }
+  digital: { history: {} },  // { 'YYYY-MM-DD': {awareness: 1-5, note} }
+  premium: false
 };
 let state = loadState();
 function loadState(){
@@ -30,7 +32,13 @@ function loadState(){
       merged.ritual = Object.assign({history:{}}, parsed.ritual);
       const perf = defaultPerformance();
       DOMAINS.forEach(d=>{ perf[d.key] = Object.assign({history:{}}, parsed.performance && parsed.performance[d.key]); });
+      // migrate old 'nervous' domain history to the new 'social' domain
+      if(parsed.performance && parsed.performance.nervous && !(parsed.performance.social && Object.keys(parsed.performance.social.history||{}).length)){
+        perf.social = Object.assign({history:{}}, parsed.performance.nervous);
+      }
       merged.performance = perf;
+      merged.digital = Object.assign({history:{}}, parsed.digital);
+      merged.premium = !!parsed.premium;
       return merged;
     }
   }catch(e){}
@@ -139,31 +147,27 @@ document.getElementById('viewClose').addEventListener('click', closeView);
 viewOverlay.addEventListener('click', e=>{ if(e.target===viewOverlay) closeView(); });
 
 /* ============================= LIFE SCORE ============================= */
-function calcStreak(){
-  const hist = state.ritual.history;
-  let streak = 0;
-  let cursor = new Date();
-  if(!hist[todayKey()]) cursor.setDate(cursor.getDate()-1);
-  while(true){
-    const key = cursor.toISOString().slice(0,10);
-    if(hist[key]){ streak++; cursor.setDate(cursor.getDate()-1); } else break;
+/* Momentum: builds with consistency, dips gently on a missed day instead of
+   resetting to zero — replaces the old hard streak-count concept. */
+function calcMomentum(hist, windowDays){
+  windowDays = windowDays || 30;
+  let m = 0;
+  for(let i=windowDays-1;i>=0;i--){
+    const key = dateKeyOffset(-i);
+    m = hist[key] ? Math.min(100, m+14) : Math.max(0, m-7);
   }
-  return streak;
+  return Math.round(m);
+}
+function calcLongestRun(hist, windowDays){
+  windowDays = windowDays || 60;
+  let longest=0, run=0;
+  for(let i=windowDays-1;i>=0;i--){ if(hist[dateKeyOffset(-i)]){ run++; longest=Math.max(longest,run); } else run=0; }
+  return longest;
 }
 /* ============================= PERFORMANCE DOMAINS ============================= */
 function domainCompletedCount(key){ return Object.keys(state.performance[key].history).length; }
 function domainDoneToday(key){ return !!state.performance[key].history[todayKey()]; }
-function domainStreak(key){
-  const hist = state.performance[key].history;
-  let streak = 0;
-  let cursor = new Date();
-  if(!hist[todayKey()]) cursor.setDate(cursor.getDate()-1);
-  while(true){
-    const k = cursor.toISOString().slice(0,10);
-    if(hist[k]){ streak++; cursor.setDate(cursor.getDate()-1); } else break;
-  }
-  return streak;
-}
+function domainMomentum(key){ return calcMomentum(state.performance[key].history); }
 function domainLessonIndex(key){ return domainCompletedCount(key) % LESSONS[key].length; }
 function domainLesson(key){ return LESSONS[key][domainLessonIndex(key)]; }
 function domainJustCycled(key){
@@ -177,31 +181,31 @@ function markDomainDone(key){
   recalcLifeScore();
 }
 
-const LIFE_SCORE_MAXES = {ritual:20,hydration:10,journal:10,streak:10,mood:10,sleep:10,nutrition:10,movement:10,nervous:10};
+/* Life Score = the 4 external pillars (sleep/nutrition/movement/social) +
+   the internal layer (mood, journal+trigger, digital boundaries) = 100 */
+const LIFE_SCORE_MAXES = {sleep:15,nutrition:15,movement:15,social:15,mood:15,journal:15,digital:10};
 function factorLabel(key){
   return DOMAINS.some(d=>d.key===key) ? t('dom_'+key+'_name') : t('factor_'+key);
 }
 function recalcLifeScore(){
   const dateStr = todayKey();
   const ritualEntry = state.ritual.history[dateStr];
-  const ritualPts = ritualEntry ? Math.round(10 + ritualEntry.energy*2) : 0;
-  const hydrationPts = Math.round(Math.min(state.water.count/state.waterGoal, 1) * 10);
   const journalToday = state.journal.some(e=>e.date===dateStr);
-  const journalPts = journalToday ? 10 : 0;
-  const streak = calcStreak();
-  const streakPts = Math.round(Math.min(streak,10)/10*10);
+  const journalPts = journalToday ? 15 : 0;
+  const digitalToday = state.digital.history[dateStr];
+  const digitalPts = digitalToday ? Math.round(digitalToday.awareness/5*10) : 0;
   const recentEnergies=[];
   for(let i=0;i<7 && recentEnergies.length<3;i++){
     const e = state.ritual.history[dateKeyOffset(-i)];
     if(e) recentEnergies.push(e.energy);
   }
-  const moodAvg = recentEnergies.length ? recentEnergies.reduce((a,b)=>a+b,0)/recentEnergies.length : 2.5;
-  const moodPts = Math.round(moodAvg/5*10);
-  const breakdown = {ritual:ritualPts,hydration:hydrationPts,journal:journalPts,streak:streakPts,mood:moodPts};
-  DOMAINS.forEach(d=>{ breakdown[d.key] = domainDoneToday(d.key) ? 10 : 0; });
+  const moodAvg = recentEnergies.length ? recentEnergies.reduce((a,b)=>a+b,0)/recentEnergies.length : (ritualEntry ? ritualEntry.energy : 2.5);
+  const moodPts = Math.round(moodAvg/5*15);
+  const breakdown = {mood:moodPts, journal:journalPts, digital:digitalPts};
+  DOMAINS.forEach(d=>{ breakdown[d.key] = domainDoneToday(d.key) ? 15 : 0; });
   const total = Object.values(breakdown).reduce((a,b)=>a+b,0);
   state.scoreHistory[dateStr] = { total, breakdown };
-  state.streak = streak;
+  state.streak = calcMomentum(state.ritual.history);
   saveState();
 }
 
@@ -209,7 +213,7 @@ function renderHome(){
   initHero();
   recalcLifeScore();
   const dateStr = todayKey();
-  const today = state.scoreHistory[dateStr] || {total:0, breakdown:{ritual:0,hydration:0,journal:0,streak:0,mood:0}};
+  const today = state.scoreHistory[dateStr] || {total:0, breakdown:{mood:0,journal:0,digital:0}};
   const ritualEntry = state.ritual.history[dateStr];
 
   ['scoreRing','scoreRing2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.setProperty('--pct', today.total); });
@@ -218,7 +222,7 @@ function renderHome(){
 
   document.getElementById('statMood').textContent = ritualEntry ? weatherEmoji(ritualEntry.weather) : '–';
   document.getElementById('statWater').textContent = `${state.water.count}/${state.waterGoal}`;
-  document.getElementById('statStreak').textContent = state.streak;
+  const momentumEl = document.getElementById('statMomentum'); if(momentumEl) momentumEl.textContent = state.streak+'%';
 
   const whyCard=document.getElementById('scoreWhyCard'), whyText=document.getElementById('scoreWhyText');
   const yesterday = state.scoreHistory[dateKeyOffset(-1)];
@@ -239,6 +243,9 @@ function renderHome(){
   renderCalStrip();
   renderSparkline('weekSparkline', 7);
   renderPerformanceGrid();
+  renderLifeMap();
+  renderDigitalCard();
+  renderWhatsNewCard();
 }
 function renderCalStrip(){
   const wrap = document.getElementById('calStrip'); if(!wrap) return;
@@ -350,6 +357,116 @@ function renderPerformanceGrid(){
   });
 }
 
+/* ============================= LIFE MAP (radar of the 4 external pillars) ============================= */
+function renderLifeMap(){
+  const svg = document.getElementById('lifeMapSvg'); if(!svg) return;
+  const cx=100, cy=100, R=72;
+  function pt(r, angle){ const rad=(angle-90)*Math.PI/180; return [cx+r*Math.cos(rad), cy+r*Math.sin(rad)]; }
+  const values = DOMAINS.map(d=> domainMomentum(d.key));
+  let html = '';
+  [0.33,0.66,1].forEach(f=> html += `<circle class="lm-grid" cx="${cx}" cy="${cy}" r="${(R*f).toFixed(1)}"></circle>`);
+  DOMAINS.forEach((d,i)=>{ const [x,y]=pt(R, i*90); html += `<line class="lm-axis" x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"></line>`; });
+  const poly = DOMAINS.map((d,i)=>{ const [x,y]=pt(R*(values[i]/100), i*90); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join(' ');
+  html += `<polygon class="lm-fill" points="${poly}"></polygon>`;
+  DOMAINS.forEach((d,i)=>{ const [x,y]=pt(R*(values[i]/100), i*90); html += `<circle class="lm-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4"></circle>`; });
+  DOMAINS.forEach((d,i)=>{ const [x,y]=pt(R+18, i*90); html += `<text class="lm-label" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="middle">${d.emoji}</text>`; });
+  svg.innerHTML = html;
+
+  const today = state.scoreHistory[todayKey()] || {breakdown:{mood:0,journal:0,digital:0}};
+  const internalPct = Math.round(((today.breakdown.mood||0)+(today.breakdown.journal||0)+(today.breakdown.digital||0))/(15+15+10)*100);
+  const cv = document.getElementById('lifeMapCenterVal'); if(cv) cv.textContent = internalPct+'%';
+}
+
+/* ============================= DIGITAL BOUNDARIES ============================= */
+function renderDigitalCard(){
+  const badge = document.getElementById('digitalBadge'); if(!badge) return;
+  const entry = state.digital.history[todayKey()];
+  badge.textContent = entry ? t('digital_card_logged')(entry.awareness) : '';
+}
+function openDigitalModal(){
+  const entry = state.digital.history[todayKey()] || {awareness:3, note:''};
+  openView(`
+    <h2 style="margin-bottom:4px;">${t('digital_modal_title')}</h2>
+    <p style="color:var(--ink-soft);font-size:12.5px;margin:0 0 18px;">${t('digital_modal_sub')}</p>
+    <div class="energy-row" style="margin-top:0;">
+      <span class="num">1</span>
+      <input type="range" id="digitalSlider" min="1" max="5" value="${entry.awareness}">
+      <span id="digitalSliderVal" class="num">${entry.awareness}</span>
+    </div>
+    <textarea id="digitalNoteInput" class="jq-input" placeholder="${t('digital_note_ph')}" style="min-height:70px;margin-top:16px;">${escapeHtml(entry.note||'')}</textarea>
+    <button class="pill-btn gold" id="digitalSaveBtn" style="margin-top:16px;">${t('digital_save')}</button>
+  `);
+  document.getElementById('digitalSlider').addEventListener('input', e=>{ document.getElementById('digitalSliderVal').textContent = e.target.value; });
+  document.getElementById('digitalSaveBtn').addEventListener('click', ()=>{
+    state.digital.history[todayKey()] = { awareness: parseInt(document.getElementById('digitalSlider').value,10), note: document.getElementById('digitalNoteInput').value.trim() };
+    saveState();
+    closeView();
+    recalcLifeScore(); renderHome();
+  });
+}
+document.getElementById('digitalBento').addEventListener('click', openDigitalModal);
+
+/* ============================= WHAT'S NEW (premium research digest) ============================= */
+function todayWhatsNewItem(){
+  const start = new Date(new Date().getFullYear(),0,0);
+  const dayOfYear = Math.floor((new Date()-start)/86400000);
+  return WHATS_NEW[dayOfYear % WHATS_NEW.length];
+}
+function renderWhatsNewCard(){
+  const el = document.getElementById('whatsNewHeadline'); if(!el) return;
+  el.textContent = todayWhatsNewItem().headline[lang];
+  document.getElementById('whatsNewBadgeText').textContent = state.premium ? t('whats_new_premium_badge') : t('whats_new_free_badge');
+}
+function wnItemHtml(item){
+  return `<div class="wn-card">
+    <span class="wn-topic-tag">${t('whats_new_topic_'+item.topic)}</span>
+    <p class="wn-headline">${escapeHtml(item.headline[lang])}</p>
+    <div class="lesson-card lesson-action" style="margin:0;padding:12px;">
+      <div class="lesson-kicker">${t('whats_new_try_btn')}</div>
+      <p class="lesson-text" style="font-size:13px;">${escapeHtml(item.experiment[lang])}</p>
+    </div>
+  </div>`;
+}
+function openWhatsNewModal(){
+  const today = todayWhatsNewItem();
+  const restHtml = WHATS_NEW.filter(i=>i.id!==today.id).map(wnItemHtml).join('');
+  openView(`
+    <div class="screen-eyebrow"><span class="dot"></span><span>${t('whats_new_eyebrow')}</span></div>
+    <h2 style="margin:0 0 14px;">${t('whats_new_title')}</h2>
+    ${wnItemHtml(today)}
+    ${state.premium ? `
+      <div class="section-title" style="margin:18px 4px 8px;padding:0;"><span>${t('whats_new_eyebrow')}</span></div>
+      ${restHtml}
+    ` : `
+      <div style="position:relative;margin-top:8px;">
+        <div class="wn-locked">${restHtml}</div>
+        <div class="lock-overlay">
+          <span class="lo-emoji">🔒</span>
+          <b style="font-size:14px;">${t('whats_new_locked_title')}</b>
+          <p style="font-size:12px;color:var(--ink-soft);max-width:260px;margin:0;">${t('whats_new_locked_sub')}</p>
+          <button class="pill-btn gold" id="wnUnlockBtn" style="max-width:220px;margin-top:6px;">${t('whats_new_unlock_btn')}</button>
+        </div>
+      </div>
+    `}
+  `);
+  const unlockBtn = document.getElementById('wnUnlockBtn');
+  if(unlockBtn) unlockBtn.addEventListener('click', openPremiumModal);
+}
+function openPremiumModal(){
+  openView(`
+    <h2 style="margin-bottom:8px;">${t('whats_new_modal_title')}</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;margin:0 0 18px;">${t('whats_new_modal_body')}</p>
+    <button class="pill-btn gold" id="premiumDemoToggle">${t('whats_new_demo_toggle')}</button>
+  `);
+  document.getElementById('premiumDemoToggle').addEventListener('click', ()=>{
+    state.premium = true;
+    saveState();
+    closeView();
+    renderWhatsNewCard();
+  });
+}
+document.getElementById('whatsNewCard').addEventListener('click', openWhatsNewModal);
+
 let currentDomainKey = null;
 function openDomainScreen(key){
   currentDomainKey = key;
@@ -367,7 +484,7 @@ function renderDomainScreen(){
   const d = DOMAINS.find(x=>x.key===key);
   const lesson = domainLesson(key);
   const count = domainCompletedCount(key);
-  const streak = domainStreak(key);
+  const momentum = domainMomentum(key);
   const done = domainDoneToday(key);
   const screen = document.getElementById('screen-domain');
   screen.style.setProperty('--acc', `var(--${d.hue}-deep)`);
@@ -376,7 +493,7 @@ function renderDomainScreen(){
   document.getElementById('domainName').textContent = t('dom_'+key+'_name');
   document.getElementById('domainTag').textContent = t('dom_'+key+'_tag');
   document.getElementById('domainDayBadge').textContent = t('day_n')(count+1);
-  document.getElementById('domainStreakBadge').textContent = streak>=2 ? `🔥 ${t('streak_days')(streak)}` : '';
+  document.getElementById('domainStreakBadge').textContent = momentum>=15 ? `⚡ ${t('momentum_pct')(momentum)}` : '';
   document.getElementById('domainActionText').textContent = lesson.action[lang];
   document.getElementById('domainWhyText').textContent = lesson.why[lang];
   document.getElementById('domainPositiveText').textContent = lesson.positive[lang];
@@ -410,7 +527,7 @@ document.getElementById('domainDoneBtn').addEventListener('click', ()=>{
 let insightsHistoryDays = 7;
 function renderInsights(){
   const dateStr = todayKey();
-  const today = state.scoreHistory[dateStr] || {total:0, breakdown:{ritual:0,hydration:0,journal:0,streak:0,mood:0}};
+  const today = state.scoreHistory[dateStr] || {total:0, breakdown:{mood:0,journal:0,digital:0}};
   document.getElementById('insightsTodayText').textContent = lang==='ar'
     ? `نقاطك اليوم ${today.total} من 100.`
     : `Your score today is ${today.total} out of 100.`;
@@ -503,11 +620,11 @@ document.getElementById('rsIntentionNext').addEventListener('click', ()=>{
   state.ritual.history[todayKey()] = entry;
   saveState();
   recalcLifeScore();
-  const streak = state.streak;
+  const momentum = state.streak;
   document.getElementById('rsDoneSub').textContent = lang==='ar'
     ? 'حفظنا نيتك على جهازك. رجعلها أي وقت من صفحة التحليلات.'
     : "We've saved your intention on this device. You can revisit it anytime from Insights.";
-  document.getElementById('rsStreakCard').innerHTML = `<div class="tip-card"><div class="tip-icon">🔥</div><div class="tip-text"><b>${t('streak_days')(streak)}</b><p>${lang==='ar'?'سلسلة طقوس الصباح':'morning ritual streak'}</p></div></div>`;
+  document.getElementById('rsStreakCard').innerHTML = `<div class="tip-card"><div class="tip-icon">⚡</div><div class="tip-text"><b>${t('momentum_pct')(momentum)}</b><p>${lang==='ar'?'زخم طقس الصباح':'morning ritual momentum'}</p></div></div>`;
   showRitualStep('done');
   renderHome(); renderInsights(); renderMemoryChips();
 });
@@ -568,9 +685,11 @@ function buildJournalSuggestRow(){
 document.getElementById('journalSaveBtn').addEventListener('click', ()=>{
   const val = document.getElementById('journalInput').value.trim();
   if(!val) return;
-  state.journal.push({ id: Date.now()+'-'+Math.random().toString(36).slice(2,7), date: todayKey(), ts: Date.now(), mood: journalSelectedMood, text: val });
+  const trigger = document.getElementById('journalTriggerInput').value.trim();
+  state.journal.push({ id: Date.now()+'-'+Math.random().toString(36).slice(2,7), date: todayKey(), ts: Date.now(), mood: journalSelectedMood, text: val, trigger });
   saveState();
   document.getElementById('journalInput').value='';
+  document.getElementById('journalTriggerInput').value='';
   journalSelectedMood=null; buildJournalMoodRow();
   const btn=document.getElementById('journalSaveBtn'); const old=btn.textContent;
   btn.textContent = t('journal_saved_toast');
@@ -594,6 +713,7 @@ function renderJournal(){
         <button class="je-del" data-id="${e.id}">${lang==='ar'?'حذف':'delete'}</button>
       </div>
       <div class="je-text">${escapeHtml(e.text)}</div>
+      ${e.trigger ? `<div class="je-text" style="margin-top:6px;color:var(--ink-faint);font-size:11.5px;">${lang==='ar'?'المحفز':'Trigger'}: ${escapeHtml(e.trigger)}</div>` : ''}
     </div>
   `).join('');
   list.querySelectorAll('.je-del').forEach(b=> b.addEventListener('click', ()=>{
@@ -629,7 +749,7 @@ function extractTopKeyword(){
 function renderMemoryChips(){
   const wrap = document.getElementById('memoryChips'); if(!wrap) return;
   const chips=[];
-  if(state.streak>=2) chips.push(`🔥 ${t('streak_days')(state.streak)}`);
+  if(state.streak>=15) chips.push(`⚡ ${t('momentum_pct')(state.streak)}`);
   if(state.journal.length>0) chips.push(lang==='ar' ? `📝 ${state.journal.length} مذكرة مسجلة` : `📝 ${state.journal.length} entries written`);
   const kw = extractTopKeyword();
   if(kw) chips.push(lang==='ar' ? `💭 "${kw.word}" تكررت ${kw.count} مرات` : `💭 "${kw.word}" mentioned ${kw.count}×`);
@@ -671,12 +791,12 @@ const NEG_NUDGES = {
 };
 const POS_REPLIES = {
   en: n=>[
-    `That's genuinely good to hear — let it land.${n>=2?` Your ${t('streak_days')(n)} streak shows you're being consistent.`:''}`,
+    `That's genuinely good to hear — let it land.${n>=40?` Your ${t('momentum_pct')(n)} shows you're building something consistent.`:''}`,
     `Love that for you. Little wins like this add up more than they feel like they do.`,
     `That's worth savoring for a second before the day pulls you forward.`
   ],
   ar: n=>[
-    `حلو جداً — استمتع فيه.${n>=2?` وسلسلتك ${t('streak_days')(n)} تشهد إنك ثابت.`:''}`,
+    `حلو جداً — استمتع فيه.${n>=40?` وزخمك ${t('momentum_pct')(n)} يشهد إنك تبني شي ثابت.`:''}`,
     `يسعدني هالشي فعلاً. الانتصارات الصغيرة زي هذي بتتراكم أكثر مما تحس.`,
     `يستاهل توقف عندها ثانية قبل ما اليوم يشدك قدام.`
   ]
@@ -721,8 +841,8 @@ function generateAIReply(text){
     const today = state.scoreHistory[todayKey()];
     const scoreTxt = today ? today.total : 0;
     return lang==='ar'
-      ? `نقاطك اليوم ${scoreTxt}/100، وعندك سلسلة ${t('streak_days')(state.streak)} من طقوس الصباح. ${state.journal.length?`كتبت ${state.journal.length} مذكرة لهلق.`:'جرب تكتب أول مذكرة، بتساعدك تشوف نفسك أوضح.'}`
-      : `You're at ${scoreTxt}/100 today, with a ${t('streak_days')(state.streak)} morning-ritual streak. ${state.journal.length?`You've written ${state.journal.length} journal entries so far.`:'Try writing your first journal entry — it helps patterns show up faster.'}`;
+      ? `نقاطك اليوم ${scoreTxt}/100، وزخمك ${t('momentum_pct')(state.streak)}. ${state.journal.length?`كتبت ${state.journal.length} مذكرة لهلق.`:'جرب تكتب أول مذكرة، بتساعدك تشوف نفسك أوضح.'}`
+      : `You're at ${scoreTxt}/100 today, with ${t('momentum_pct')(state.streak)}. ${state.journal.length?`You've written ${state.journal.length} journal entries so far.`:'Try writing your first journal entry — it helps patterns show up faster.'}`;
   }
   if(wantsTip(text)){
     const list = TIP_TEMPLATES[lang];

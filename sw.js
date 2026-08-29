@@ -1,4 +1,4 @@
-const CACHE_NAME = 'morning-os-v3';
+const CACHE_NAME = 'morning-os-v4';
 const APP_SHELL = [
   './',
   './index.html',

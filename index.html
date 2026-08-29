@@ -151,16 +151,40 @@
         <div class="stat-chip-row" style="margin-top:12px;">
           <div class="stat-chip"><div class="sc-val" id="statMood">–</div><div class="sc-lbl" data-i18n="stat_mood">Mood</div></div>
           <div class="stat-chip"><div class="sc-val num" id="statWater">0/8</div><div class="sc-lbl" data-i18n="stat_water">Water</div></div>
-          <div class="stat-chip"><div class="sc-val num" id="statStreak">0</div><div class="sc-lbl" data-i18n="stat_streak">Streak</div></div>
+          <div class="stat-chip"><div class="sc-val num" id="statMomentum">0%</div><div class="sc-lbl" data-i18n="momentum_title">Momentum</div></div>
         </div>
 
         <div class="card" id="scoreWhyCard" style="margin-top:12px;display:none;">
           <p id="scoreWhyText" style="margin:0;font-size:12.5px;color:var(--ink-soft);line-height:1.6;"></p>
         </div>
 
+        <div class="section-title" style="margin-top:22px;"><span data-i18n="life_map_title">Life Map</span></div>
+        <p class="section-lede" data-i18n="life_map_sub">Your four external pillars, at a glance.</p>
+        <div class="card">
+          <div class="lifemap-wrap">
+            <svg class="lifemap-svg" id="lifeMapSvg" viewBox="0 0 200 200"></svg>
+            <div class="lifemap-center"><b id="lifeMapCenterVal" class="num">–</b><span data-i18n="life_map_internal">Internal</span></div>
+          </div>
+        </div>
+
+        <div class="bento full bento-lavender clickable" id="digitalBento" style="margin-top:14px;">
+          <span class="bento-status" id="digitalBadge"></span>
+          <div class="bento-icon">📵</div>
+          <div class="bento-title" data-i18n="digital_card_title">Digital Boundaries</div>
+          <div class="bento-sub" data-i18n="digital_card_sub">Rate how intentional your screen use felt today.</div>
+        </div>
+
         <div class="section-title" style="margin-top:22px;"><span data-i18n="perf_section_title">Performance</span></div>
         <p class="section-lede" data-i18n="perf_section_sub">Four daily practices that build on each other, day by day.</p>
         <div class="bento-grid" id="performanceGrid"></div>
+
+        <div class="section-title" style="margin-top:22px;"><span data-i18n="whats_new_title">What's New</span></div>
+        <div class="bento full bento-mustard clickable" id="whatsNewCard">
+          <span class="premium-badge" id="whatsNewBadge" style="position:absolute;top:16px;inset-inline-end:16px;">✨ <span id="whatsNewBadgeText"></span></span>
+          <div class="bento-icon">🔬</div>
+          <div class="bento-title" id="whatsNewHeadline" style="margin-top:12px;font-size:14px;line-height:1.4;"></div>
+          <div class="bento-cta" data-i18n="whats_new_try_btn">Try it today →</div>
+        </div>
 
         <div class="section-title" style="margin-top:22px;"><span data-i18n="this_week">This Week</span></div>
         <div class="bento full bento-lavender">
@@ -225,6 +249,7 @@
         <div class="journal-hero">
           <div class="mood-row" id="journalMoodRow"></div>
           <textarea id="journalInput" class="jq-input" data-i18n-ph="journal_ph" placeholder="What's on your mind…" style="min-height:120px;margin-top:12px;border-color:transparent;"></textarea>
+          <input id="journalTriggerInput" type="text" class="jq-input" data-i18n-ph="journal_trigger_ph" placeholder="What set this off, if anything…" style="margin-top:8px;border-color:transparent;font-size:12.5px;padding:10px 14px;">
           <div class="suggest-row" id="journalSuggestRow" style="margin-top:10px;"></div>
           <button class="pill-btn" id="journalSaveBtn" style="margin-top:12px;background:var(--btn-bg);color:var(--btn-ink);" data-i18n="journal_save">Save entry</button>
         </div>

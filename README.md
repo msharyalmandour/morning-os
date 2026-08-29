@@ -10,27 +10,49 @@ coral evenings, lavender nights).
 
 ## Features
 
+Morning OS is built around one idea: instead of scattered, disconnected habits,
+one system links your whole life — an **external environment** (four daily
+pillars) and an **internal environment** (the deeper layer underneath them) —
+with a science-grounded reason for each.
+
 - **Morning Ritual** — a short guided flow each day: three slow breaths, an "inner
   weather" mood + energy check-in, an intention, and a gratitude note.
-- **Life Score** — a 0–100 score built from today's ritual, hydration, journaling,
-  streak, and rolling mood, with a breakdown and 7/14-day history charts.
-- **Brain Dump Journal** — a free-write space with mood tagging, search, and a
-  running entry history.
+- **External environment — Performance** — four standalone daily programs
+  (Sleep, Nutrition, Movement, Social Connection), each its own screen. Every
+  day surfaces one lesson from a 9-step curriculum that deepens tier by tier
+  (foundational → building → advanced) as the domain's "Day N" count grows —
+  action, the physiological/psychological "why," the realistic upside of
+  keeping it up, and the realistic cost of skipping it.
+- **Internal environment** — the deeper layer: daily psychological state
+  (captured through the ritual's mood/energy check-in), a **Digital
+  Boundaries** check-in rating how intentional today's screen use felt, and
+  Brain Dump journal entries that can optionally log the *trigger* behind a
+  feeling, not just the feeling itself.
+- **Life Map** — a radar visualization on the home screen that unifies the
+  four external pillars into one glance, with the internal layer summarized
+  at its center, instead of separate disconnected lists.
+- **Momentum** — replaces the old hard streak count. Consistency builds it up,
+  a missed day only dips it gently instead of resetting to zero — so one off
+  day doesn't undo a month of showing up.
+- **Life Score** — a single 0–100 score built from the four external pillars
+  plus the internal layer (mood, journaling, digital boundaries), with a
+  breakdown and 7/14/30-day history charts.
+- **Brain Dump Journal** — a free-write space with mood tagging, an optional
+  trigger field, search, and a running entry history.
 - **AI Memory** — an on-device, rule-based reflection companion. It notices
-  patterns (streaks, recurring journal keywords, mood trends) and chats using
+  patterns (momentum, recurring journal keywords, mood trends) and chats using
   local templates — nothing is sent to a server.
-- **Performance** — four standalone daily programs (Sleep, Nutrition, Movement,
-  Nervous System), each its own screen. Every day surfaces one lesson from a
-  9-step curriculum that deepens tier by tier (foundational → building →
-  advanced) as the domain's "Day N" count grows — action, the physiological
-  "why," the realistic upside of keeping it up, and the realistic cost of
-  skipping it. Progress is tracked with a 7-day dot history and a per-domain
-  streak, and completing each domain feeds into the Life Score.
+- **What's New (Premium)** — a rotating research digest across sleep,
+  nutrition, movement, and social connection, each finding turned into a
+  one-tap experiment. One item is free daily; the full digest is gated behind
+  a premium unlock. Since this is a local-only app with no backend, the
+  unlock is an honest client-side demo toggle rather than a real payment flow
+  — a real product would wire this to App Store/Play Store billing.
 
 All data (ritual history, journal entries, chat log, performance history,
-settings) is stored only in the browser's `localStorage`. There is no backend,
-no accounts, and no network calls other than loading the Google Fonts
-stylesheet.
+digital-boundary check-ins, settings) is stored only in the browser's
+`localStorage`. There is no backend, no accounts, and no network calls other
+than loading the Google Fonts stylesheet.
 
 ## Running locally
 

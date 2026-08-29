@@ -9,7 +9,7 @@ const DOMAINS = [
   { key:'sleep',      emoji:'🌙', hue:'lavender' },
   { key:'nutrition',  emoji:'🍽️', hue:'mustard' },
   { key:'movement',   emoji:'🏃', hue:'sage' },
-  { key:'nervous',    emoji:'🫁', hue:'blush' }
+  { key:'social',     emoji:'🤝', hue:'blush' }
 ];
 
 const LESSONS = {
@@ -293,97 +293,157 @@ movement: [
 }
 ],
 
-nervous: [
+social: [
 {
-  action:{en:"Spend a few minutes breathing with a longer exhale than inhale — in for 4, out for 6-8.",
-           ar:"اصرف كم دقيقة تتنفس بزفير أطول من الشهيق — شهيق 4، زفير 6-8."},
-  why:{en:"A longer exhale specifically activates the vagus nerve, shifting you from \"fight or flight\" toward \"rest and digest\" — it's the fastest lever you have.",
-        ar:"الزفير الأطول تحديداً ينشّط العصب المبهم، وينقلك من \"الكر أو الفر\" لـ \"الراحة والهضم\" — أسرع أداة عندك."},
-  positive:{en:"A measurable drop in heart rate and felt tension within minutes.",
-             ar:"نزول ملموس بضربات القلب والتوتر المحسوس خلال دقايق."},
-  negative:{en:"Staying in shallow, fast breathing under stress keeps your body activated longer than the actual stressor requires.",
-             ar:"البقاء بتنفس سريع وسطحي وقت التوتر يخلّي جسمك مفعّل أطول مما يحتاجه سبب التوتر الفعلي."}
+  action:{en:"Have one real, voice or in-person conversation today — not text — even 5 minutes.",
+           ar:"اسوِ محادثة حقيقية اليوم — مكالمة أو وجهاً لوجه، مو نص — حتى لو 5 دقايق بس."},
+  why:{en:"Voice and face carry tone and pace that text strips out entirely — hearing a real voice measurably lowers stress hormones in a way reading a message doesn't.",
+        ar:"الصوت والوجه ينقلون نبرة وإيقاع النص ما يقدر ينقلهم أبداً — سماع صوت حقيقي ينزّل هرمونات التوتر بشكل ملموس، وهذا ما يصير بقراءة رسالة."},
+  positive:{en:"A real mood lift the same day — bigger than any amount of texting produces.",
+             ar:"تحسّن حقيقي بمزاجك نفس اليوم — أكبر من أي كمية مسجات."},
+  negative:{en:"Substituting texting for voice or in-person contact leaves the calming effect of real connection largely untapped, even while you feel \"in touch.\"",
+             ar:"استبدال التواصل الصوتي أو المباشر بالنص يخلّي أثر التواصل الحقيقي المهدّئ غير مستخدم غالباً، حتى لو حاسس إنك \"متواصل\"."}
 },
 {
-  action:{en:"Pause and name what you're feeling in one or two words — \"tense,\" \"wired,\" \"flat.\"",
-           ar:"توقف وسمّي اللي تحس فيه بكلمة أو كلمتين — \"متوتر\"، \"مشحون\"، \"فاضي\"."},
-  why:{en:"Naming a feeling engages your rational brain and measurably lowers the reactivity of your brain's alarm center — a documented effect called affect labeling.",
-        ar:"تسمية الإحساس تنشّط الجزء العقلاني بمخك وتخفف بشكل ملموس تفاعل مركز الإنذار بمخك — تأثير موثّق يُسمى \"تسمية الانفعال\"."},
-  positive:{en:"The feeling loses some intensity just from being named, and you respond more deliberately.",
-             ar:"الإحساس يخف شوي بس من تسميته، وتتصرف بشكل أكثر وعياً."},
-  negative:{en:"Unnamed, diffuse stress tends to leak out sideways — as irritability or tension you don't consciously connect to its source.",
-             ar:"التوتر المنتشر اللي ما تسمّيه يميل يطلع بطرق جانبية — نرفزة أو توتر ما تربطه واعياً بمصدره."}
+  action:{en:"Notice one moment today you reach for your phone from boredom or unease, not need — and wait 10 seconds before opening it.",
+           ar:"لاحظ لحظة وحدة اليوم تمد إيدك فيها للموبايل من الملل أو القلق مو من حاجة فعلية — واستنى 10 ثواني قبل ما تفتحه."},
+  why:{en:"That short pause interrupts the automatic dopamine-seeking loop that habitual checking builds, giving you a real moment of choice instead of autopilot.",
+        ar:"هالوقفة القصيرة توقف حلقة البحث التلقائي عن الدوبامين اللي يبنيها تفقّد الموبايل المتكرر، وتديك لحظة اختيار حقيقية بدل ما تصير عادة آلية."},
+  positive:{en:"Awareness alone starts loosening the automatic grip within days.",
+             ar:"مجرد الانتباه يبدأ يخفف القبضة التلقائية خلال كم يوم."},
+  negative:{en:"Unexamined automatic checking reinforces itself a little more each time, making the habit progressively harder to even notice.",
+             ar:"التفقّد التلقائي اللي ما تنتبه له يعزز نفسه شوي كل مرة، ويصير أصعب حتى تلاحظه مع الوقت."}
 },
 {
-  action:{en:"Take a real 60-90 second pause between demanding tasks — not scrolling, just pausing.",
-           ar:"خذ وقفة حقيقية 60-90 ثانية بين المهام المرهقة — مو تصفح، بس وقفة."},
-  why:{en:"Switching tasks with no pause keeps your stress hormones and nervous system activated continuously, instead of letting them settle between demands.",
-        ar:"تبديل المهام بدون وقفة يخلّي هرمونات التوتر وجهازك العصبي مفعّلين باستمرار، بدل ما تهدى بين كل مهمة وثانية."},
-  positive:{en:"You meet the next task from a calmer baseline instead of a stacked one.",
-             ar:"توصل للمهمة الجاية من نقطة أهدأ بدل نقطة متراكمة."},
-  negative:{en:"Back-to-back demands with no recovery gap compound across the day — often peaking as evening irritability or feeling wired but tired at night.",
-             ar:"المهام المتتالية بدون فجوة تعافي تتراكم طول اليوم — وغالباً توصل ذروتها كنرفزة مسائية أو إحساس \"مشحون بس تعبان\" بالليل."}
+  action:{en:"Turn off non-essential notifications for a two-hour block today.",
+           ar:"سكّر الإشعارات الغير ضرورية لمدة ساعتين اليوم."},
+  why:{en:"Each notification carries a small attention-switching cost and an anticipatory dopamine hit that fragments focus and quietly primes low-grade anxiety, regardless of its content.",
+        ar:"كل إشعار يحمل كلفة صغيرة بتبديل الانتباه ودفعة دوبامين ترقّبية تفتّت تركيزك وتحضّر لقلق خفيف بهدوء، بغض النظر عن محتواه."},
+  positive:{en:"Noticeably deeper focus and a calmer background hum during that block.",
+             ar:"تركيز أعمق بشكل ملحوظ وهدوء خلفي أثناء هالفترة."},
+  negative:{en:"Constant interruption keeps your nervous system in a low-grade \"waiting\" state that drains energy without registering as fatigue.",
+             ar:"المقاطعة المستمرة تخلّي جهازك العصبي بحالة \"انتظار\" خفيفة تستنزف طاقتك بدون ما تحس فيها كتعب واضح."}
 },
 {
-  action:{en:"A brief cool splash of water on your face or hands — or end your shower slightly cooler.",
-           ar:"رشة مويه باردة سريعة على وجهك أو إيدك — أو خلّي آخر دشك أبرد شوي."},
-  why:{en:"This triggers the \"dive reflex,\" a fast vagal response that slows your heart rate — one of the quickest known ways to interrupt acute stress.",
-        ar:"هذا يحفّز \"منعكس الغوص\"، استجابة سريعة بالعصب المبهم تبطّئ ضربات قلبك — من أسرع الطرق المعروفة توقف التوتر الحاد."},
-  positive:{en:"A quick, reliable reset when something has spiked your stress in the moment.",
-             ar:"إعادة ضبط سريعة وموثوقة لما شي يرفع توترك باللحظة."},
-  negative:{en:"Without an active reset tool, a stress spike just rides itself out slowly over the following 20-60+ minutes.",
-             ar:"بدون أداة تعيد ضبطك فعلياً، ارتفاع التوتر ياخذ وقته يهدى لحاله على مدى 20-60 دقيقة أو أكثر."}
+  action:{en:"Eat one meal today with no phone at the table — alone or with others.",
+           ar:"كل وجبة اليوم بدون موبايل عالطاولة — لحالك أو مع ناس."},
+  why:{en:"A screen-free meal supports digestion (it lets your nervous system stay in \"rest and digest\" mode) and, when shared, a documented bonding effect that a phone at the table measurably blunts.",
+        ar:"الوجبة بدون شاشة تدعم الهضم (تخلّي جهازك العصبي بوضع \"الراحة والهضم\") وتدعم — لو كانت مشتركة — رابطة اجتماعية موثّقة، والموبايل عالطاولة يضعفها بشكل ملموس."},
+  positive:{en:"Better digestion, and if shared, a warmer sense of connection afterward.",
+             ar:"هضم أفضل، ولو كانت الوجبة مشتركة، إحساس ألطف بالتواصل بعدها."},
+  negative:{en:"A screen at the table splits attention enough to blunt both the digestive and social benefit of the meal, even if no one mentions it.",
+             ar:"الشاشة عالطاولة تقسّم الانتباه لدرجة تضعف فايدة الهضم والتواصل الاجتماعي للوجبة، حتى لو محد قال شي."}
 },
 {
-  action:{en:"A hand on your chest, or a slow self-hug for 20-30 seconds when overwhelmed.",
-           ar:"حط إيدك على صدرك، أو احضن نفسك ببطء لمدة 20-30 ثانية لما تحس مثقّل."},
-  why:{en:"Gentle, sustained pressure signals safety to your nervous system — the same mechanism behind why weighted blankets help some people.",
-        ar:"الضغط الهادئ المستمر يرسل إشارة أمان لجهازك العصبي — نفس الآلية اللي تخلّي البطانيات الثقيلة تساعد بعض الناس."},
-  positive:{en:"A fast, always-available way to calm down in the moment, anywhere.",
-             ar:"طريقة سريعة ومتاحة دايماً تهدّي فيها نفسك باللحظة، بأي مكان."},
-  negative:{en:"Without a physical tool, people often reach only for thoughts (\"just think positive\") — which work far less well when the body, not the mind, is the actual problem.",
-             ar:"بدون أداة جسدية، الناس غالباً يلجأون بس للأفكار (\"بس فكّر إيجابي\") — وهذي تشتغل أضعف بكثير لما الجسم، مو العقل، هو المشكلة الفعلية."}
+  action:{en:"Reach out first to one person you've been meaning to talk to — don't wait for them to text first.",
+           ar:"تواصل أنت أول مع شخص تنوي تكلمه من فترة — لا تستنى إنه يبدأ هو."},
+  why:{en:"Most people significantly underestimate how much others appreciate being reached out to — this well-documented gap keeps many real connections dormant simply because everyone is waiting.",
+        ar:"أغلب الناس يقلّلون من تقدير الطرف الثاني لمن يتواصل معه أول — هالفجوة الموثّقة تخلّي علاقات حقيقية كثيرة نايمة بس لأن الكل مستني."},
+  positive:{en:"You'll likely find the contact is warmer and easier than you expected.",
+             ar:"غالباً بتلاقي التواصل أدفى وأسهل مما توقعت."},
+  negative:{en:"Waiting indefinitely for others to initiate quietly narrows your circle over time — not because people don't care, but because everyone is waiting on someone else.",
+             ar:"انتظار الطرف الثاني بلا نهاية يضيّق دائرتك بهدوء مع الوقت — مو لأن الناس ما تهتم، بس لأن الكل مستني الثاني."}
 },
 {
-  action:{en:"Spend a few minutes looking at or being in a natural setting — trees, sky, plants; even a window view counts partially.",
-           ar:"اصرف كم دقيقة تشوف أو تكون بمكان طبيعي — أشجار، سما، نباتات؛ حتى إطلالة من الشباك تفيد جزئياً."},
-  why:{en:"Natural scenes engage a soft, low-effort form of attention that lets your brain's focus resources recover — unlike screens, which demand constant directed attention.",
-        ar:"المناظر الطبيعية تشغّل انتباه هادي وخفيف الجهد يخلّي موارد التركيز بمخك تتعافى — عكس الشاشات اللي تطلب انتباه موجّه مستمر."},
-  positive:{en:"Measurably restored focus and lower stress after even a short exposure.",
-             ar:"تركيز يرجع بشكل ملموس وتوتر أقل حتى بعد تعرّض قصير."},
-  negative:{en:"Attention that never gets this kind of break stays depleted — showing up as irritability and trouble concentrating by day's end.",
-             ar:"الانتباه اللي ما ياخذ هالنوع من الراحة يضل مستنزف — ويبين كنرفزة وصعوبة تركيز آخر اليوم."}
+  action:{en:"Set one specific window today when your phone is fully out of reach — not just silenced.",
+           ar:"حدد فترة معينة اليوم يكون فيها موبايلك بعيد عن إيدك تماماً — مو بس صامت."},
+  why:{en:"Just having your phone visible or within reach measurably reduces available attention, even switched off — this is a separate effect from notifications entirely.",
+        ar:"مجرد وجود موبايلك أمام عينك أو بمتناول إيدك يقلل انتباهك المتاح بشكل ملموس، حتى لو مقفول — وهذا تأثير منفصل تماماً عن الإشعارات."},
+  positive:{en:"A window of genuinely undistracted presence — in conversation or in your own thoughts.",
+             ar:"فترة حضور حقيقي غير مشتت — بمحادثة أو بأفكارك أنت."},
+  negative:{en:"A visible phone keeps a small share of your attention permanently reserved for it, even during conversations that deserve your full presence.",
+             ar:"الموبايل المرئي يحجز جزء صغير من انتباهك بشكل دائم له، حتى بمحادثات تستاهل حضورك الكامل."}
 },
 {
-  action:{en:"Notice your own early physical signs of stress — jaw clenching, shallow breath, tense shoulders — before they build up.",
-           ar:"انتبه لعلاماتك الجسدية المبكرة للتوتر — شد الفك، تنفس ضحل، كتف متوتر — قبل ما تتراكم."},
-  why:{en:"Noticing internal body signals lets you intervene while stress is still small and easy to shift, instead of only noticing once it's large.",
-        ar:"ملاحظة إشارات جسدك الداخلية تخلّيك تتدخل والتوتر لسا صغير وسهل تغييره، بدل ما تلاحظه بس لما يصير كبير."},
-  positive:{en:"You catch and defuse stress early, before it accumulates into a bad afternoon or a bad night's sleep.",
-             ar:"تمسك التوتر وتفكّكه بدري، قبل ما يتراكم لعصر سيء أو نوم سيء."},
-  negative:{en:"Without this awareness, stress often isn't noticed until it's already large, and takes much more to bring back down.",
-             ar:"بدون هالوعي، التوتر غالباً ما يُلاحظ إلا وهو كبير، ويحتاج جهد أكبر بكثير يرجع يهدى."}
+  action:{en:"Ask someone a real follow-up question today about something they mentioned before — show you remembered.",
+           ar:"اسأل حد اليوم سؤال متابعة حقيقي عن شي ذكره لك قبل — خلّه يحس إنك تتذكر."},
+  why:{en:"Being remembered and followed up on is one of the strongest, cheapest signals of care in a relationship — and it's rarer than people think in a distracted culture.",
+        ar:"إحساس الطرف الثاني إنك تتذكره وتتابع معه من أقوى وأرخص إشارات الاهتمام بأي علاقة — وهي أندر مما تتوقع بثقافة مليانة تشتت."},
+  positive:{en:"Relationships measurably deepen through small remembered details more than through grand gestures.",
+             ar:"العلاقات تعمّق بشكل ملموس بالتفاصيل الصغيرة المتذكَّرة أكثر من اللفتات الكبيرة."},
+  negative:{en:"Conversations that never follow up on what mattered to the other person tend to stay surface-level indefinitely, however frequent they are.",
+             ar:"المحادثات اللي ما تتابع اللي كان مهم للطرف الثاني تضل سطحية بلا نهاية، مهما كانت متكررة."}
 },
 {
-  action:{en:"Before a known stressful event, use one of these tools deliberately beforehand — not just after.",
-           ar:"قبل موقف تعرف إنه بيوترك، استخدم إحدى هالأدوات بشكل مقصود قبله — مو بس بعده."},
-  why:{en:"Your baseline arousal state going into a stressor determines how high it spikes you — starting calmer means peaking lower.",
-        ar:"حالة تفعيلك الأساسية وأنت داخل على الموقف تحدد كم بيرفعك — تبدأ أهدأ يعني ذروتك أوطى."},
-  positive:{en:"You go into hard moments from a steadier baseline and recover from them faster too.",
-             ar:"تدخل اللحظات الصعبة من نقطة أثبت، وتتعافى منها أسرع كمان."},
-  negative:{en:"Entering stressful events already keyed-up means the same event hits you harder and takes longer to recover from.",
-             ar:"دخولك للموقف وأنت مشحون أصلاً يعني نفس الموقف يضربك أقوى وياخذ وقت أطول تتعافى منه."}
+  action:{en:"Notice — without judging either — which of your relationships feel energizing versus draining lately.",
+           ar:"لاحظ — بدون ما تحكم على أي منهم — أي علاقاتك تحس إنها تعطيك طاقة وأيها تستنزفك مؤخراً."},
+  why:{en:"Not all social contact is equally restorative — distinguishing the two lets you invest attention where it actually replenishes you, not just where it's most available (like a group chat).",
+        ar:"مو كل تواصل اجتماعي يجدّد طاقتك بنفس القدر — التمييز بينهم يخليك تصرف انتباهك بمكان يعوّضك فعلاً، مو بس بأسهل مكان متاح (زي قروب دردشة)."},
+  positive:{en:"You start protecting time for what genuinely recharges you.",
+             ar:"تبدأ تحمي وقتك للي فعلاً يشحنك."},
+  negative:{en:"Treating all social contact as interchangeable means the most available (often shallowest) contact crowds out what would actually help.",
+             ar:"معاملة كل تواصل اجتماعي كأنه متشابه يخلّي أسهل تواصل متاح (غالباً الأسطحي) ياخذ مكان اللي كان يفيدك فعلاً."}
 },
 {
-  action:{en:"Once a week, notice which tool actually worked for you, and lean into it more next week.",
-           ar:"مرة بالأسبوع، لاحظ أي أداة اشتغلت معك فعلياً، واعتمد عليها أكثر الأسبوع الجاي."},
-  why:{en:"Nervous system regulation is personal — what calms one person (movement) may not work as well for another (stillness). Tracking what actually works for you beats following a generic list.",
-        ar:"تنظيم الجهاز العصبي شخصي — اللي يهدّي شخص (حركة) ممكن ما يشتغل نفس الشي لثاني (سكون). تتبع اللي يشتغل معك فعلاً أفضل من اتباع قائمة عامة."},
-  positive:{en:"Your toolkit gets more effective over time instead of staying generic.",
-             ar:"أدواتك تصير أفعل مع الوقت بدل ما تضل عامة."},
-  negative:{en:"Never noticing what works means reaching for the same ineffective tool out of habit, again and again.",
-             ar:"ما تلاحظ اللي يشتغل يعني ترجع لنفس الأداة الضعيفة من العادة، مرة بعد مرة."}
+  action:{en:"Do an honest check of today: how much of your social time was real presence versus parallel scrolling next to people?",
+           ar:"سوِّ مراجعة صادقة لليوم: قد إيش من وقتك الاجتماعي كان حضور حقيقي، وقد إيش كان تصفح موازي جنب ناس؟"},
+  why:{en:"\"Phubbing\" (phone-snubbing during shared time) is linked to lower relationship satisfaction even when the people involved don't consciously register the cause.",
+        ar:"\"التجاهل بسبب الموبايل\" وقت التواصل المشترك مرتبط برضا أقل بالعلاقة، حتى لو الطرفين ما ربطوا السبب بوعي."},
+  positive:{en:"Awareness of the pattern is the first and biggest step to closing the gap between time spent together and time truly connected.",
+             ar:"الوعي بهالنمط هو أول وأكبر خطوة تقفل بيها الفجوة بين الوقت اللي تقضيه مع ناس والوقت اللي فعلاً متواصل فيه."},
+  negative:{en:"An unexamined pattern of parallel scrolling can leave you feeling lonely even while surrounded by people, without a clear reason why.",
+             ar:"نمط التصفح الموازي اللي ما تنتبه له ممكن يخليك تحس بالوحدة حتى وأنت محاط بناس، بدون ما تعرف السبب بوضوح."}
 }
 ]
 
 };
+
+/* ============================================================
+   "الجديد" — What's New: rotating research-digest pool.
+   Not tied to specific citations — plain-language, well-established
+   findings, each turned into a one-tap experiment. One item "features"
+   per day (deterministic by day-of-year), premium unlocks browsing
+   the full pool.
+   ============================================================ */
+const WHATS_NEW = [
+  { id:'wn1', topic:'sleep',
+    headline:{en:"A short afternoon nap (under 30 minutes) raises alertness without hurting nighttime sleep — a longer nap does the opposite.",
+               ar:"غفوة قصيرة بعد الظهر (أقل من 30 دقيقة) ترفع يقظتك بدون ما تأثر على نوم الليل — الغفوة الطويلة تسوي العكس."},
+    experiment:{en:"If you nap today, set an alarm for 15-20 minutes.",
+                 ar:"لو بتغفى اليوم، حط منبه لـ15-20 دقيقة بس."} },
+  { id:'wn2', topic:'nutrition',
+    headline:{en:"Eating order matters almost as much as content — vegetables and protein before refined carbs measurably flattens the after-meal blood-sugar spike.",
+               ar:"ترتيب الأكل يأثر بقد نوعه تقريباً — أكل الخضار والبروتين قبل الكارب المكرر يخفف ارتفاع السكر بعد الوجبة بشكل ملموس."},
+    experiment:{en:"At your next meal, eat the vegetables and protein first, carbs last.",
+                 ar:"بوجبتك الجاية، كل الخضار والبروتين أول، والكارب آخر شي."} },
+  { id:'wn3', topic:'movement',
+    headline:{en:"Short movement breaks (2-3 minutes) spread through the day give cardiovascular benefit close to one longer session, for the same total time.",
+               ar:"فترات حركة قصيرة (2-3 دقايق) موزعة باليوم تعطي فايدة قلبية-وعائية قريبة من جلسة تمرين وحدة أطول، لو كان مجموع الوقت متشابه."},
+    experiment:{en:"Today, stand and move for 2 minutes every hour of sitting instead of one long session.",
+                 ar:"اليوم، قوم وتحرك دقيقتين كل ساعة قعود بدل جلسة تمرين وحدة طويلة."} },
+  { id:'wn4', topic:'social',
+    headline:{en:"Just having a phone visible on the table (even face-down, even off) measurably lowers how present a conversation feels.",
+               ar:"مجرد وجود الموبايل على الطاولة (حتى مقلوب أو مقفول) يقلل بشكل ملموس إحساس الحضور بالمحادثة."},
+    experiment:{en:"In your first conversation today, put your phone in your pocket or another room.",
+                 ar:"بأول محادثة تجيك اليوم، حط الموبايل بجيبك أو غرفة ثانية."} },
+  { id:'wn5', topic:'sleep',
+    headline:{en:"Blue-toned light before bed delays your body clock more than warm-toned light at the same brightness.",
+               ar:"الضوء الأزرق قبل النوم يأخّر ساعتك الداخلية أكثر من الضوء الدافي بنفس السطوع."},
+    experiment:{en:"Switch your screen to warm/night mode starting at 8pm tonight.",
+                 ar:"فعّل وضع الإضاءة الدافية على شاشتك من الساعة 8 مساءً الليلة."} },
+  { id:'wn6', topic:'nutrition',
+    headline:{en:"A full glass of water 10 minutes before a meal raises fullness and reduces how much you eat, without feeling like restriction.",
+               ar:"كاس مويه كامل قبل الوجبة بعشر دقايق يرفع إحساس الشبع ويقلل كمية الأكل، بدون ما تحس بحرمان."},
+    experiment:{en:"Drink a full glass of water 10 minutes before your next meal.",
+                 ar:"اشرب كاس مويه كامل قبل وجبتك الجاية بعشر دقايق."} },
+  { id:'wn7', topic:'movement',
+    headline:{en:"A short walk right after a meal blunts the post-meal blood-sugar spike more than the same walk at any other time of day.",
+               ar:"مشية قصيرة بعد الأكل مباشرة تخفف ارتفاع السكر بعد الوجبة أكثر من نفس المشية بأي وقت ثاني باليوم."},
+    experiment:{en:"Walk for 10 minutes right after your largest meal today.",
+                 ar:"امشِ 10 دقايق بعد أكبر وجبة عندك اليوم مباشرة."} },
+  { id:'wn8', topic:'social',
+    headline:{en:"A voice call lowers stress hormones more than a text conversation with identical content.",
+               ar:"المكالمة الصوتية تخفض هرمونات التوتر أكثر من محادثة نصية بنفس المحتوى بالضبط."},
+    experiment:{en:"Call one person today instead of texting them.",
+                 ar:"اتصل بشخص وحد اليوم بدل ما ترسله رسالة."} },
+  { id:'wn9', topic:'sleep',
+    headline:{en:"A cluttered bedroom is linked to lower sleep quality, independent of noise or temperature.",
+               ar:"غرفة النوم الفوضوية مرتبطة بجودة نوم أقل، بشكل مستقل عن الضجة أو الحرارة."},
+    experiment:{en:"Clear just one surface in your bedroom before you sleep tonight.",
+                 ar:"رتب سطح واحد بس بغرفة نومك قبل ما تنام الليلة."} },
+  { id:'wn10', topic:'movement',
+    headline:{en:"A short resistance-movement set raises insulin sensitivity for hours afterward — not just during the movement itself.",
+                ar:"مجموعة تمارين مقاومة قصيرة ترفع حساسية الإنسولين لساعات بعدها — مو بس أثناء التمرين نفسه."},
+    experiment:{en:"Do one set of squats or push-ups today, even a short one.",
+                 ar:"اسوِ سيت واحد سكوات أو ضغط اليوم — حتى لو قصير."} }
+];
