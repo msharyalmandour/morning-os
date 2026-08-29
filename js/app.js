@@ -18,7 +18,9 @@ const DEFAULT_STATE = {
   chatLog: [],               // [{who:'ai'|'user', text, ts}]
   performance: defaultPerformance(), // { [domainKey]: { history: {'YYYY-MM-DD': true} } }
   digital: { entries: [] },  // urge log: [{id, ts, date, trigger, urgeType, response, alternative}]
-  premium: false
+  premium: false,
+  focusArea: null,           // one of FOCUS_AREAS keys — set at onboarding, changeable in Settings
+  lastReflectionAt: null     // 'YYYY-MM-DD' of the last weekly AI reflection shown
 };
 let state = loadState();
 function loadState(){
@@ -50,6 +52,8 @@ function loadState(){
         merged.digital = { entries: [] };
       }
       merged.premium = !!parsed.premium;
+      merged.focusArea = parsed.focusArea || null;
+      merged.lastReflectionAt = parsed.lastReflectionAt || null;
       return merged;
     }
   }catch(e){}
@@ -166,7 +170,7 @@ function showScreen(name){
   document.getElementById('screens').scrollTop = 0;
   window.scrollTo(0, 0);
   if(name==='journal') renderJournal();
-  if(name==='memory'){ renderMemoryChips(); renderChat(); }
+  if(name==='memory'){ maybeInjectWeeklyReflection(); renderMemoryChips(); renderChat(); }
   if(name==='insights') renderInsights();
   if(name==='home') staggerReveal('.card, .bento', document.getElementById('screen-home'));
   if(name==='journal') staggerReveal('.journal-entry', document.getElementById('journalList'));
@@ -372,15 +376,24 @@ function renderWeekBars(elId, days){
 }
 
 /* ============================= PERFORMANCE UI ============================= */
+function getFocusDomainKey(){
+  const fa = FOCUS_AREAS.find(f=>f.key===state.focusArea);
+  return fa ? fa.domain : null;
+}
 function renderPerformanceGrid(){
   const grid = document.getElementById('performanceGrid'); if(!grid) return;
-  grid.innerHTML = DOMAINS.map(d=>{
+  const focusDomain = getFocusDomainKey();
+  const ordered = focusDomain ? [...DOMAINS].sort((a,b)=> (a.key===focusDomain?-1:0) - (b.key===focusDomain?-1:0)) : DOMAINS;
+  grid.innerHTML = ordered.map(d=>{
     const done = domainDoneToday(d.key);
     const count = domainCompletedCount(d.key);
+    const isFocus = d.key===focusDomain;
+    const ring = isFocus ? ', 0 0 0 2px var(--gold)' : '';
     return `
-      <button class="bento clickable" data-domain="${d.key}" style="background:var(--${d.hue});box-shadow:var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 34px -14px var(--${d.hue}-deep);">
+      <button class="bento clickable" data-domain="${d.key}" style="background:var(--${d.hue});box-shadow:var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 34px -14px var(--${d.hue}-deep)${ring};">
         <span class="bento-icon">${d.emoji}</span>
         <span class="bento-status ${done?'done':''} num">${done ? '✓' : t('day_n')(count+1)}</span>
+        ${isFocus ? `<span style="position:absolute;top:16px;inset-inline-start:16px;font-size:14px;z-index:1;">🎯</span>` : ''}
         <div class="bento-title">${t('dom_'+d.key+'_name')}</div>
         <div class="bento-sub">${t('dom_'+d.key+'_tag')}</div>
       </button>`;
@@ -495,6 +508,11 @@ document.getElementById('digitalBento').addEventListener('click', openDigitalMod
 function todayWhatsNewItem(){
   const start = new Date(new Date().getFullYear(),0,0);
   const dayOfYear = Math.floor((new Date()-start)/86400000);
+  const focusDomain = getFocusDomainKey();
+  if(focusDomain && dayOfYear%3!==0){
+    const matched = WHATS_NEW.filter(i=>i.topic===focusDomain);
+    if(matched.length) return matched[dayOfYear % matched.length];
+  }
   return WHATS_NEW[dayOfYear % WHATS_NEW.length];
 }
 function renderWhatsNewCard(){
@@ -551,6 +569,67 @@ function openPremiumModal(){
   });
 }
 document.getElementById('whatsNewCard').addEventListener('click', openWhatsNewModal);
+
+/* ============================= PATTERN DETECTION + WEEKLY REFLECTION ============================= */
+function detectDominantPattern(){
+  const windowMs = 14*86400000;
+  const cutoff = Date.now() - windowMs;
+  const urges = state.digital.entries.filter(e=>e.ts>=cutoff);
+  if(urges.length>=3){
+    const triggerCounts={}, typeCounts={}, timeCounts={morning:0,afternoon:0,evening:0,night:0};
+    urges.forEach(e=>{
+      if(e.trigger) triggerCounts[e.trigger]=(triggerCounts[e.trigger]||0)+1;
+      if(e.urgeType) typeCounts[e.urgeType]=(typeCounts[e.urgeType]||0)+1;
+      const h=new Date(e.ts).getHours();
+      const phase = h>=21||h<5?'night':h<12?'morning':h<18?'afternoon':'evening';
+      timeCounts[phase]++;
+    });
+    const topOf = obj=>Object.keys(obj).sort((a,b)=>obj[b]-obj[a])[0];
+    const topTrigger = topOf(triggerCounts), topType = topOf(typeCounts), topTime = topOf(timeCounts);
+    if(topTrigger && topType) return { kind:'urge', trigger:topTrigger, urgeType:topType, timePhase:topTime||'evening', count:urges.length };
+  }
+  const momentums = DOMAINS.map(d=>({key:d.key, m:domainMomentum(d.key)})).sort((a,b)=>a.m-b.m);
+  if(momentums[0] && momentums[0].m < 40) return { kind:'domain', domain:momentums[0].key };
+  const kw = extractTopKeyword();
+  if(kw) return { kind:'keyword', word:kw.word, count:kw.count };
+  return null;
+}
+function shouldOfferReflection(){
+  if(!state.lastReflectionAt) return state.digital.entries.length>=3 || state.journal.length>=3;
+  const days = (Date.now() - new Date(state.lastReflectionAt+'T00:00:00').getTime())/86400000;
+  return days>=7;
+}
+function generateReflection(){
+  const p = detectDominantPattern();
+  if(!p) return null;
+  if(p.kind==='urge'){
+    const alt = URGE_ALT_SUGGESTIONS[p.trigger] || URGE_ALT_SUGGESTIONS.other;
+    const timeLabel = t('time_'+p.timePhase);
+    return lang==='ar'
+      ? `لاحظت إن أكثر محفز لرغباتك آخر أسبوعين هو "${t('urge_trigger_'+p.trigger)}"، ونوعها غالباً "${t('urge_type_'+p.urgeType)}"، وأكثرها ${timeLabel}. جرب هذا المرة الجاية: ${alt.ar}`
+      : `Over the last two weeks, your urges have mostly been triggered by "${t('urge_trigger_'+p.trigger)}", mostly "${t('urge_type_'+p.urgeType)}", mostly in ${timeLabel}. Try this next time: ${alt.en}`;
+  }
+  if(p.kind==='domain'){
+    return lang==='ar'
+      ? `لاحظت إن "${t('dom_'+p.domain+'_name')}" هو أضعف مجال عندك آخر فترة. يوم واحد بسيط فيه ممكن يرفع باقي مجالاتك كمان — جرب تفتحه اليوم.`
+      : `"${t('dom_'+p.domain+'_name')}" has been your weakest area lately. One simple day there tends to lift everything else too — worth opening it today.`;
+  }
+  if(p.kind==='keyword'){
+    return lang==='ar'
+      ? `لاحظت إن كلمة "${p.word}" تكررت بمذكراتك ${p.count} مرات. أحياناً كتابتها بوضوح أكثر بمذكرة اليوم يساعد تشوفها من زاوية جديدة.`
+      : `"${p.word}" has come up ${p.count} times in your journal. Writing about it more directly today sometimes helps you see it from a new angle.`;
+  }
+  return null;
+}
+function maybeInjectWeeklyReflection(){
+  if(!shouldOfferReflection()) return;
+  const text = generateReflection();
+  if(!text) return;
+  const labeled = `🔍 ${t('reflection_label')} — ${text}`;
+  state.chatLog.push({who:'ai reflection', text:labeled, ts:Date.now()});
+  state.lastReflectionAt = todayKey();
+  saveState();
+}
 
 let currentDomainKey = null;
 function openDomainScreen(key){
@@ -999,16 +1078,21 @@ function sendChat(){
 document.getElementById('chatSend').addEventListener('click', sendChat);
 document.getElementById('chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });
 
-/* ============================= ONBOARDING ============================= */
-let obSelectedGoal=null;
-const OB_GOALS = [
-  {key:'calm', emoji:'🌿'}, {key:'habits', emoji:'🔁'}, {key:'journal', emoji:'📓'}, {key:'energy', emoji:'⚡'}
+/* ============================= ONBOARDING / FOCUS AREA ============================= */
+const FOCUS_AREAS = [
+  {key:'sleep', emoji:'🌙', domain:'sleep'},
+  {key:'food', emoji:'🍬', domain:'nutrition'},
+  {key:'phone', emoji:'📱', domain:'social'},
+  {key:'motivation', emoji:'⚡', domain:'movement'},
+  {key:'lonely', emoji:'🤝', domain:'social'},
+  {key:'anxiety', emoji:'😣', domain:null}
 ];
+let obSelectedGoal=null;
 function buildGoalOptions(){
   const wrap=document.getElementById('obGoalOptions'); if(!wrap) return; wrap.innerHTML='';
-  OB_GOALS.forEach(g=>{
+  FOCUS_AREAS.forEach(g=>{
     const b=document.createElement('button'); b.className='ob-opt'+(obSelectedGoal===g.key?' selected':'');
-    b.innerHTML = `<span class="ob-emoji">${g.emoji}</span><span>${t('ob_goal_'+g.key)}</span>`;
+    b.innerHTML = `<span class="ob-emoji">${g.emoji}</span><span>${t('focus_'+g.key)}</span>`;
     b.addEventListener('click', ()=>{ obSelectedGoal=g.key; buildGoalOptions(); });
     wrap.appendChild(b);
   });
@@ -1023,13 +1107,36 @@ document.getElementById('obNameNext').addEventListener('click', ()=>{
 });
 document.getElementById('obLangToggle').addEventListener('click', ()=> setLang(lang==='ar'?'en':'ar'));
 document.getElementById('obGoalNext').addEventListener('click', ()=>{
-  state.goal = obSelectedGoal;
+  state.focusArea = obSelectedGoal;
   state.onboarded = true;
   saveState();
   document.getElementById('onboardOverlay').classList.add('hidden');
   renderHome();
   maybeShowRitual();
 });
+function openFocusPicker(){
+  let picked = state.focusArea;
+  const html = `<h2 style="margin-bottom:14px;">${t('ob_goal_title')}</h2>
+    <div class="ob-options" id="focusPickerOptions"></div>
+    <button class="pill-btn gold" id="focusPickerSave">${t('settings_change_focus')}</button>`;
+  openView(html);
+  function paint(){
+    const wrap = document.getElementById('focusPickerOptions'); wrap.innerHTML='';
+    FOCUS_AREAS.forEach(g=>{
+      const b=document.createElement('button'); b.className='ob-opt'+(picked===g.key?' selected':'');
+      b.innerHTML = `<span class="ob-emoji">${g.emoji}</span><span>${t('focus_'+g.key)}</span>`;
+      b.addEventListener('click', ()=>{ picked=g.key; paint(); });
+      wrap.appendChild(b);
+    });
+  }
+  paint();
+  document.getElementById('focusPickerSave').addEventListener('click', ()=>{
+    state.focusArea = picked;
+    saveState();
+    closeView();
+    renderHome();
+  });
+}
 function maybeShowRitual(){
   if(!state.ritual.history[todayKey()]) startRitual();
   else document.getElementById('ritualOverlay').classList.add('hidden');
@@ -1040,6 +1147,7 @@ const settingsOverlay=document.getElementById('settingsOverlay');
 document.getElementById('settingsBtn').addEventListener('click', ()=>{ renderSettingsUI(); settingsOverlay.classList.add('active'); });
 document.getElementById('settingsClose').addEventListener('click', ()=> settingsOverlay.classList.remove('active'));
 settingsOverlay.addEventListener('click', e=>{ if(e.target===settingsOverlay) settingsOverlay.classList.remove('active'); });
+document.getElementById('changeFocusBtn').addEventListener('click', ()=>{ settingsOverlay.classList.remove('active'); openFocusPicker(); });
 document.getElementById('langToggle').addEventListener('click', ()=> setLang(lang==='ar'?'en':'ar'));
 document.getElementById('langSeg').querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=> setLang(b.dataset.lang)));
 document.getElementById('darkToggle').addEventListener('click', ()=>{

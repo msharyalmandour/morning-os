@@ -265,6 +265,7 @@ body.dark .jq-input{background:#211C15;}
 .msg{max-width:82%;padding:13px 16px;border-radius:20px;font-size:14px;line-height:1.6;animation:fadeIn .3s ease both;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 .msg.ai{background:var(--lavender);color:var(--lavender-deep);border-bottom-left-radius:6px;align-self:flex-start;}
+.msg.reflection{background:var(--gold-soft);color:var(--ink);border:1px solid rgba(232,168,85,.3);max-width:92%;}
 html[dir="rtl"] .msg.ai{border-bottom-left-radius:20px;border-bottom-right-radius:6px;}
 .msg.user{background:var(--btn-bg);color:var(--btn-ink);border-bottom-right-radius:6px;align-self:flex-end;}
 html[dir="rtl"] .msg.user{border-bottom-right-radius:20px;border-bottom-left-radius:6px;align-self:flex-start;}
