@@ -29,14 +29,68 @@ input,textarea,select{font-family:inherit;}
 .num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;display:inline-block;}
 @media (prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important;animation-iteration-count:1 !important;transition-duration:0.001ms !important;}}
 
-body.dark{--bg:#15130F;--ink:#F3EFE6;--ink-soft:#B9B2A4;--ink-faint:#847E70;--line:rgba(255,255,255,0.09);
-  --mustard:#7A5C16;--mustard-deep:#F6DFA0; --sage:#41592B;--sage-deep:#CFE3B8; --blush:#6E3448;--blush-deep:#F3C7D4;
-  --lavender:#453A7C;--lavender-deep:#DAD1F5; --coral:#7A3A1E;--coral-deep:#F5B396; --cream-card:#211C15;
-  --glass-strong:rgba(255,255,255,0.06); --btn-bg:#F3EFE6; --btn-ink:#15130F;
-  --good:#8FCB9F;--good-pale:#20301F; --warn:#E3A47F;--warn-pale:#332018;}
-body.dark #shell{background:var(--bg);}
-body.dark .search-input,body.dark #chatInput,body.dark .jq-input{background:#211C15;color:var(--ink);border-color:var(--line);}
+/* ============ CINEMATIC DARK (default identity) ============ */
+body.dark{--bg:#0B0A08;--ink:#F5F0E6;--ink-soft:#C7BEAC;--ink-faint:#867D6C;--line:rgba(255,255,255,0.08);
+  --gold:#E8A855;--gold-soft:#2A1F10;
+  --mustard:rgba(245,197,49,0.14);--mustard-deep:#F5C531;
+  --sage:rgba(174,201,140,0.14);--sage-deep:#AEC98C;
+  --blush:rgba(243,182,196,0.14);--blush-deep:#F3C7D4;
+  --lavender:rgba(198,187,236,0.16);--lavender-deep:#DAD1F5;
+  --coral:rgba(240,137,95,0.16);--coral-deep:#F5B396;
+  --cream-card:#17130C;
+  --glass-strong:rgba(255,255,255,0.05); --btn-bg:#F5F0E6; --btn-ink:#0B0A08;
+  --shadow-soft:0 8px 28px rgba(0,0,0,0.45); --shadow:0 24px 54px rgba(0,0,0,0.58);
+  --good:#8FCB9F;--good-pale:#1C2C1E; --warn:#E3A47F;--warn-pale:#2E1B12;}
+body.dark #shell{background:var(--bg);position:relative;z-index:1;}
+body.dark .search-input,body.dark #chatInput,body.dark .jq-input{background:#171310;color:var(--ink);border-color:var(--line);}
 body.dark .modal{background:var(--bg);}
+
+/* filmic grain — fixed, behind all content, non-interactive */
+body.dark::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* glass cards catch a hairline of light along the top edge */
+body.dark .card,body.dark .bento,body.dark .lesson-card,body.dark .journal-entry,body.dark .rh-row,
+body.dark .stat-chip,body.dark .wn-card,body.dark .study-card,body.dark .mini-stat{
+  border-color:rgba(255,255,255,0.09);
+  box-shadow:var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+body.dark .bento{backdrop-filter:blur(18px);}
+body.dark .bento-mustard{box-shadow:var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,.06), 0 10px 34px -14px var(--mustard-deep);}
+body.dark .bento-sage{box-shadow:var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,.06), 0 10px 34px -14px var(--sage-deep);}
+body.dark .bento-blush{box-shadow:var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,.06), 0 10px 34px -14px var(--blush-deep);}
+body.dark .bento-lavender{box-shadow:var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,.06), 0 10px 34px -14px var(--lavender-deep);}
+body.dark .bento-coral{box-shadow:var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,.06), 0 10px 34px -14px var(--coral-deep);}
+
+/* warm glow blooms — the cinematic "light source in the corner" */
+body.dark #heroBento::before,body.dark .domain-banner::before{
+  content:'';position:absolute;top:-38%;inset-inline-end:-26%;width:230px;height:230px;border-radius:50%;
+  background:radial-gradient(circle, var(--gold), transparent 70%);opacity:.30;filter:blur(44px);pointer-events:none;z-index:0;
+}
+body.dark .domain-banner::before{background:radial-gradient(circle, var(--acc), transparent 70%);opacity:.26;}
+
+/* hero / onboarding / ritual overlays — replace flat mustard fill with a warm glow-on-black */
+body.dark .onboard-sky{background:radial-gradient(circle at 28% 18%, rgba(232,168,85,.34), transparent 55%), linear-gradient(165deg,#150F09,var(--bg) 72%);}
+body.dark .overlay-full{background:radial-gradient(circle at 25% 15%, rgba(232,168,85,.3), transparent 55%), linear-gradient(165deg,#150F09,var(--bg) 65%);}
+body.dark .breath-circle{background:radial-gradient(circle,#3A2A16,var(--gold));box-shadow:0 0 54px rgba(232,168,85,.45);}
+
+/* progress ring: warm glowing gradient instead of flat white */
+body.dark .ring.on-color{background:conic-gradient(var(--gold) calc(var(--pct,0)*1%),rgba(255,255,255,0.1) 0);box-shadow:0 0 30px -6px rgba(232,168,85,.55);}
+
+/* nav pill: a touch more glass + a glowing active indicator */
+#nav{backdrop-filter:blur(22px);}
+.nav-btn.active::before{box-shadow:0 0 18px rgba(232,168,85,.5);}
+
+/* selected states get a glow ring instead of relying on fill alone */
+body.dark .weather-opt.selected,body.dark .mood-btn.selected,body.dark .ob-opt.selected{
+  border-color:var(--mustard-deep);box-shadow:0 0 0 1px var(--mustard-deep) inset, 0 0 18px -4px var(--mustard-deep);
+}
+
+/* chat bubbles need real contrast against the near-black canvas */
+body.dark .msg.ai{background:rgba(198,187,236,.14);border:1px solid rgba(198,187,236,.22);backdrop-filter:blur(10px);}
+body.dark .typing{background:rgba(198,187,236,.14);}
 
 /* ============ SHELL / NAV ============ */
 #shell{max-width:480px;margin:0 auto;min-height:100vh;position:relative;background:var(--bg);display:flex;flex-direction:column;}
@@ -97,7 +151,7 @@ html[dir="rtl"] .section-title{text-transform:none;letter-spacing:0;}
 .bento-coral{background:var(--coral);}
 .bento-cream{background:var(--cream-card);}
 .bento-icon{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,0.45);display:flex;align-items:center;justify-content:center;font-size:18px;position:relative;z-index:1;}
-body.dark .bento-icon{background:rgba(0,0,0,0.2);}
+body.dark .bento-icon{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);}
 .bento-title{font-weight:800;font-size:15px;margin-top:12px;position:relative;z-index:1;line-height:1.25;}
 .bento-sub{font-size:11.5px;color:rgba(30,27,22,0.68);margin-top:3px;position:relative;z-index:1;line-height:1.4;}
 body.dark .bento-sub{color:rgba(255,255,255,0.68);}
@@ -363,3 +417,11 @@ body.dark .premium-badge{background:rgba(0,0,0,0.28);color:var(--gold-soft);}
 .wn-locked{filter:blur(5px);opacity:.55;pointer-events:none;user-select:none;}
 .lock-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px;}
 .lock-overlay .lo-emoji{font-size:26px;}
+
+/* ============ MICRO-INTERACTIONS ============ */
+@keyframes pulseSuccess{
+  0%{transform:scale(1);box-shadow:0 0 0 0 rgba(232,168,85,.5);}
+  35%{transform:scale(1.045);box-shadow:0 0 0 10px rgba(232,168,85,.16);}
+  100%{transform:scale(1);box-shadow:0 0 0 16px rgba(232,168,85,0);}
+}
+.pulse-success{animation:pulseSuccess .7s var(--ease-spring);}

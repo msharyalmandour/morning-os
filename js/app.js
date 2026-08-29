@@ -8,7 +8,7 @@ const DEFAULT_STATE = {
   user: null,               // { name }
   goal: null,
   onboarded: false,
-  dark: false,
+  dark: true,
   waterGoal: 8,
   water: { date: null, count: 0 },
   ritual: { history: {} },  // { 'YYYY-MM-DD': {weather, energy, intention, gratitude, completedAt} }
@@ -17,7 +17,7 @@ const DEFAULT_STATE = {
   streak: 0,                 // momentum score, 0-100 (name kept for storage back-compat)
   chatLog: [],               // [{who:'ai'|'user', text, ts}]
   performance: defaultPerformance(), // { [domainKey]: { history: {'YYYY-MM-DD': true} } }
-  digital: { history: {} },  // { 'YYYY-MM-DD': {awareness: 1-5, note} }
+  digital: { entries: [] },  // urge log: [{id, ts, date, trigger, urgeType, response, alternative}]
   premium: false
 };
 let state = loadState();
@@ -37,7 +37,18 @@ function loadState(){
         perf.social = Object.assign({history:{}}, parsed.performance.nervous);
       }
       merged.performance = perf;
-      merged.digital = Object.assign({history:{}}, parsed.digital);
+      if(parsed.digital && Array.isArray(parsed.digital.entries)){
+        merged.digital = { entries: parsed.digital.entries };
+      } else if(parsed.digital && parsed.digital.history){
+        // migrate the old single-daily-rating format into urge-log entries
+        merged.digital = { entries: Object.keys(parsed.digital.history).map(dateStr=>{
+          const old = parsed.digital.history[dateStr];
+          const response = old.awareness>=4 ? 'resisted' : old.awareness<=2 ? 'gave_in' : 'partial';
+          return { id:newId(), ts:new Date(dateStr+'T12:00:00').getTime(), date:dateStr, trigger:'', urgeType:'digital', response, alternative: old.note||'' };
+        }) };
+      } else {
+        merged.digital = { entries: [] };
+      }
       merged.premium = !!parsed.premium;
       return merged;
     }
@@ -46,6 +57,7 @@ function loadState(){
 }
 function saveState(){ try{ localStorage.setItem('morningOS_state', JSON.stringify(state)); }catch(e){} }
 function todayKey(){ return new Date().toISOString().slice(0,10); }
+function newId(){ return Date.now()+'-'+Math.random().toString(36).slice(2,7); }
 function dateKeyOffset(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
 
 const WEATHER = [
@@ -111,6 +123,28 @@ function initHero(){
   eyebrow.textContent = t('greet_'+phase+'_eyebrow');
   greeting.textContent = t('greet_'+phase+'_title_name')(name);
   sub.textContent = t('greet_'+phase+'_sub');
+}
+
+/* ============================= MICRO-INTERACTIONS ============================= */
+function animateNumber(el, to, suffix){
+  if(!el) return;
+  suffix = suffix || '';
+  const from = parseInt(el.textContent,10); const fromVal = isNaN(from) ? 0 : from;
+  if(fromVal === to){ el.textContent = to+suffix; return; }
+  const start = performance.now(), duration = 650;
+  function tick(now){
+    const p = Math.min(1, (now-start)/duration);
+    const eased = 1 - Math.pow(1-p, 3);
+    el.textContent = Math.round(fromVal + (to-fromVal)*eased) + (p<1 ? '' : suffix);
+    if(p<1) requestAnimationFrame(tick); else el.textContent = to+suffix;
+  }
+  requestAnimationFrame(tick);
+}
+function pulse(el){
+  if(!el) return;
+  el.classList.remove('pulse-success');
+  void el.offsetWidth;
+  el.classList.add('pulse-success');
 }
 
 /* ============================= REVEAL ANIMATION ============================= */
@@ -192,8 +226,7 @@ function recalcLifeScore(){
   const ritualEntry = state.ritual.history[dateStr];
   const journalToday = state.journal.some(e=>e.date===dateStr);
   const journalPts = journalToday ? 15 : 0;
-  const digitalToday = state.digital.history[dateStr];
-  const digitalPts = digitalToday ? Math.round(digitalToday.awareness/5*10) : 0;
+  const digitalPts = digitalPointsForDate(dateStr);
   const recentEnergies=[];
   for(let i=0;i<7 && recentEnergies.length<3;i++){
     const e = state.ritual.history[dateKeyOffset(-i)];
@@ -217,12 +250,12 @@ function renderHome(){
   const ritualEntry = state.ritual.history[dateStr];
 
   ['scoreRing','scoreRing2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.setProperty('--pct', today.total); });
-  const v1=document.getElementById('scoreVal'); if(v1) v1.textContent = today.total;
-  const v2=document.getElementById('scoreVal2'); if(v2) v2.textContent = today.total;
+  animateNumber(document.getElementById('scoreVal'), today.total);
+  animateNumber(document.getElementById('scoreVal2'), today.total);
 
   document.getElementById('statMood').textContent = ritualEntry ? weatherEmoji(ritualEntry.weather) : '–';
   document.getElementById('statWater').textContent = `${state.water.count}/${state.waterGoal}`;
-  const momentumEl = document.getElementById('statMomentum'); if(momentumEl) momentumEl.textContent = state.streak+'%';
+  animateNumber(document.getElementById('statMomentum'), state.streak, '%');
 
   const whyCard=document.getElementById('scoreWhyCard'), whyText=document.getElementById('scoreWhyText');
   const yesterday = state.scoreHistory[dateKeyOffset(-1)];
@@ -345,7 +378,7 @@ function renderPerformanceGrid(){
     const done = domainDoneToday(d.key);
     const count = domainCompletedCount(d.key);
     return `
-      <button class="bento clickable" data-domain="${d.key}" style="background:var(--${d.hue});">
+      <button class="bento clickable" data-domain="${d.key}" style="background:var(--${d.hue});box-shadow:var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 34px -14px var(--${d.hue}-deep);">
         <span class="bento-icon">${d.emoji}</span>
         <span class="bento-status ${done?'done':''} num">${done ? '✓' : t('day_n')(count+1)}</span>
         <div class="bento-title">${t('dom_'+d.key+'_name')}</div>
@@ -374,34 +407,86 @@ function renderLifeMap(){
 
   const today = state.scoreHistory[todayKey()] || {breakdown:{mood:0,journal:0,digital:0}};
   const internalPct = Math.round(((today.breakdown.mood||0)+(today.breakdown.journal||0)+(today.breakdown.digital||0))/(15+15+10)*100);
-  const cv = document.getElementById('lifeMapCenterVal'); if(cv) cv.textContent = internalPct+'%';
+  animateNumber(document.getElementById('lifeMapCenterVal'), internalPct, '%');
 }
 
-/* ============================= DIGITAL BOUNDARIES ============================= */
+/* ============================= URGE LOG (CBT-lite) ============================= */
+const URGE_TRIGGERS = [
+  {key:'boredom', emoji:'😐'}, {key:'stress', emoji:'😣'}, {key:'fatigue', emoji:'😴'},
+  {key:'sadness', emoji:'😔'}, {key:'habit', emoji:'🔁'}, {key:'other', emoji:'➕'}
+];
+const URGE_TYPES = [ {key:'phone', emoji:'📱'}, {key:'food', emoji:'🍬'}, {key:'other', emoji:'➕'} ];
+const URGE_RESPONSES = [ {key:'resisted', emoji:'✅'}, {key:'partial', emoji:'➗'}, {key:'gave_in', emoji:'🔁'} ];
+const URGE_ALT_SUGGESTIONS = {
+  boredom:{en:"Try a 2-minute walk instead", ar:"جرب مشية دقيقتين بدلها"},
+  stress:{en:"Try 4-6 breathing for one minute", ar:"جرب تنفس 4-6 لدقيقة"},
+  fatigue:{en:"Drink a glass of water and stretch", ar:"اشرب كاس مويه وتمدد شوي"},
+  sadness:{en:"Text one person who makes you feel good", ar:"راسل شخص يخليك تحس حلو"},
+  habit:{en:"Pause 10 seconds and name the urge out loud", ar:"توقف 10 ثواني وسمّي الرغبة بصوت عالي"},
+  other:{en:"Notice the urge without acting on it for one minute", ar:"لاحظ الرغبة بدون ما تتصرف فيها لدقيقة"}
+};
+function digitalPointsForDate(dateStr){
+  const entries = state.digital.entries.filter(e=>e.date===dateStr);
+  if(!entries.length) return 0;
+  const resisted = entries.filter(e=>e.response==='resisted').length;
+  const partial = entries.filter(e=>e.response==='partial').length;
+  const ratio = (resisted + partial*0.5) / entries.length;
+  return Math.round(6 + ratio*4);
+}
 function renderDigitalCard(){
   const badge = document.getElementById('digitalBadge'); if(!badge) return;
-  const entry = state.digital.history[todayKey()];
-  badge.textContent = entry ? t('digital_card_logged')(entry.awareness) : '';
+  const todayEntries = state.digital.entries.filter(e=>e.date===todayKey());
+  if(!todayEntries.length){ badge.textContent=''; return; }
+  const resisted = todayEntries.filter(e=>e.response==='resisted').length;
+  badge.textContent = t('digital_card_logged')(todayEntries.length, resisted);
+}
+let urgeSelected = { trigger:null, type:null, response:null };
+function buildUrgeOptGrid(items, groupKey, i18nPrefix){
+  return `<div class="weather-grid" style="grid-template-columns:repeat(3,1fr);" data-group="${groupKey}">${
+    items.map(it=>`<button type="button" class="weather-opt" data-val="${it.key}">${it.emoji}<small>${t(i18nPrefix+'_'+it.key)}</small></button>`).join('')
+  }</div>`;
+}
+function buildUrgeAltSuggestion(){
+  const row = document.getElementById('urgeAltSuggestRow'); if(!row || !urgeSelected.trigger) return;
+  const s = URGE_ALT_SUGGESTIONS[urgeSelected.trigger]; if(!s) return;
+  row.innerHTML = `<button type="button" class="suggest-chip">${escapeHtml(s[lang])}</button>`;
+  row.querySelector('.suggest-chip').addEventListener('click', ()=>{ document.getElementById('urgeAltInput').value = s[lang]; });
 }
 function openDigitalModal(){
-  const entry = state.digital.history[todayKey()] || {awareness:3, note:''};
+  urgeSelected = { trigger:null, type:null, response:null };
   openView(`
     <h2 style="margin-bottom:4px;">${t('digital_modal_title')}</h2>
-    <p style="color:var(--ink-soft);font-size:12.5px;margin:0 0 18px;">${t('digital_modal_sub')}</p>
-    <div class="energy-row" style="margin-top:0;">
-      <span class="num">1</span>
-      <input type="range" id="digitalSlider" min="1" max="5" value="${entry.awareness}">
-      <span id="digitalSliderVal" class="num">${entry.awareness}</span>
-    </div>
-    <textarea id="digitalNoteInput" class="jq-input" placeholder="${t('digital_note_ph')}" style="min-height:70px;margin-top:16px;">${escapeHtml(entry.note||'')}</textarea>
-    <button class="pill-btn gold" id="digitalSaveBtn" style="margin-top:16px;">${t('digital_save')}</button>
+    <p style="color:var(--ink-soft);font-size:12.5px;margin:0 0 16px;">${t('digital_modal_sub')}</p>
+    <p style="font-size:12px;font-weight:800;color:var(--ink-soft);margin:0 0 8px;">${t('urge_step_trigger')}</p>
+    ${buildUrgeOptGrid(URGE_TRIGGERS,'trigger','urge_trigger')}
+    <p style="font-size:12px;font-weight:800;color:var(--ink-soft);margin:16px 0 8px;">${t('urge_step_type')}</p>
+    ${buildUrgeOptGrid(URGE_TYPES,'type','urge_type')}
+    <p style="font-size:12px;font-weight:800;color:var(--ink-soft);margin:16px 0 8px;">${t('urge_step_response')}</p>
+    ${buildUrgeOptGrid(URGE_RESPONSES,'response','urge_response')}
+    <p style="font-size:12px;font-weight:800;color:var(--ink-soft);margin:16px 0 8px;">${t('urge_alt_label')}</p>
+    <div class="suggest-row" id="urgeAltSuggestRow" style="margin-bottom:8px;"></div>
+    <textarea id="urgeAltInput" class="jq-input" placeholder="${t('digital_note_ph')}" style="min-height:56px;"></textarea>
+    <button class="pill-btn gold" id="urgeSaveBtn" style="margin-top:16px;">${t('digital_save')}</button>
   `);
-  document.getElementById('digitalSlider').addEventListener('input', e=>{ document.getElementById('digitalSliderVal').textContent = e.target.value; });
-  document.getElementById('digitalSaveBtn').addEventListener('click', ()=>{
-    state.digital.history[todayKey()] = { awareness: parseInt(document.getElementById('digitalSlider').value,10), note: document.getElementById('digitalNoteInput').value.trim() };
+  document.querySelectorAll('#viewBody .weather-grid').forEach(grid=>{
+    grid.querySelectorAll('.weather-opt').forEach(btn=> btn.addEventListener('click', ()=>{
+      const group = grid.dataset.group;
+      urgeSelected[group] = btn.dataset.val;
+      grid.querySelectorAll('.weather-opt').forEach(b=> b.classList.toggle('selected', b===btn));
+      if(group==='trigger') buildUrgeAltSuggestion();
+    }));
+  });
+  document.getElementById('urgeSaveBtn').addEventListener('click', ()=>{
+    if(!urgeSelected.trigger || !urgeSelected.type || !urgeSelected.response) return;
+    state.digital.entries.push({
+      id:newId(), ts:Date.now(), date:todayKey(),
+      trigger:urgeSelected.trigger, urgeType:urgeSelected.type, response:urgeSelected.response,
+      alternative: document.getElementById('urgeAltInput').value.trim()
+    });
     saveState();
     closeView();
     recalcLifeScore(); renderHome();
+    pulse(document.getElementById('digitalBento'));
   });
 }
 document.getElementById('digitalBento').addEventListener('click', openDigitalModal);
@@ -518,9 +603,11 @@ function renderDomainScreen(){
 document.getElementById('domainBack').addEventListener('click', ()=> showScreen('home'));
 document.getElementById('domainDoneBtn').addEventListener('click', ()=>{
   if(!currentDomainKey) return;
+  const wasDone = domainDoneToday(currentDomainKey);
   markDomainDone(currentDomainKey);
   renderDomainScreen();
   renderHome();
+  if(!wasDone) pulse(document.getElementById('domainDoneBtn'));
 });
 
 /* ============================= INSIGHTS ============================= */
