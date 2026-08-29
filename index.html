@@ -3,57 +3,108 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>بحثي — لوحة إدارة البحث</title>
-<meta name="description" content="بحثي — لوحة عمل لإدارة مشروع البحث الجامعي: تقدّم المقترح، مراجعة الأدبيات، الفجوة البحثية، المنهجية، والمهام. كل شي محفوظ على جهازك فقط.">
-<meta name="theme-color" content="#6E4F10">
+<title>Morning OS</title>
+<meta name="description" content="Morning OS — a calm daily wellness companion. Your morning ritual, life score, brain-dump journal, and AI memory, all stored on your device.">
+<meta name="theme-color" content="#6B7A54">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="بحثي">
+<meta name="apple-mobile-web-app-title" content="Morning OS">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <!-- ============ ONBOARDING ============ -->
 <div id="onboardOverlay" class="overlay-full">
-  <div class="onboard-sky"></div>
+  <div class="onboard-sky" id="onboardSky"></div>
+  <div class="onboard-sun"></div>
   <div class="onboard-sheet">
     <div class="ob-progress"><i class="on"></i><i></i></div>
     <div id="obStepName" class="ob-step active">
-      <div class="ob-emoji">🎓</div>
-      <h1 class="display ob-title">أهلاً فيك في بحثي</h1>
-      <p class="ob-sub">مساحة تدير فيها مشروع بحثك خطوة بخطوة — من المقترح لحد البحث النهائي. كل بياناتك تُحفظ على جهازك فقط.</p>
+      <div class="ob-emoji">☀️</div>
+      <h1 class="display ob-title" data-i18n="ob_welcome_title">Good morning.</h1>
+      <p class="ob-sub" data-i18n="ob_welcome_sub">A calm space for your mornings, your thoughts, and your progress — all kept right here on your device.</p>
       <div class="auth-field">
-        <label>شو اسمك؟</label>
-        <input id="obNameInput" type="text" maxlength="30" placeholder="اسمك">
+        <label data-i18n="ob_name_label">What should we call you?</label>
+        <input id="obNameInput" type="text" maxlength="24" data-i18n-ph="ob_name_ph" placeholder="Your name">
       </div>
-      <button class="pill-btn gold" id="obNameNext">متابعة</button>
+      <button class="pill-btn gold" id="obNameNext" data-i18n="ob_continue">Continue</button>
+      <button class="lang-inline" id="obLangToggle">EN / العربية</button>
     </div>
-    <div id="obStepTitle" class="ob-step">
-      <div class="ob-emoji">📝</div>
-      <h1 class="display ob-title">عنوان دراستك المبدئي</h1>
-      <p class="ob-sub">اكتب عنوان بحثك كما هو الآن — تقدر تعدّله في أي وقت لاحقاً.</p>
-      <div class="auth-field">
-        <label>عنوان الدراسة</label>
-        <input id="obTitleInput" type="text" maxlength="140" placeholder="مثال: معرفة الممرضين واستخدامهم لأدوات فحص الدليريوم في العناية المركزة">
+    <div id="obStepGoal" class="ob-step">
+      <div class="ob-emoji">🌱</div>
+      <h1 class="display ob-title" data-i18n="ob_goal_title">What brings you here?</h1>
+      <p class="ob-sub" data-i18n="ob_goal_sub">This just helps us greet you better — nothing is sent anywhere.</p>
+      <div class="ob-options" id="obGoalOptions"></div>
+      <button class="pill-btn gold" id="obGoalNext" data-i18n="ob_start">Start my morning</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MORNING RITUAL ============ -->
+<div id="ritualOverlay" class="overlay-full hidden">
+  <button id="ritualSkip" data-i18n="ritual_skip">Skip for today</button>
+  <div id="ritualInner">
+
+    <div class="ritual-step active" id="rs-welcome">
+      <div class="ritual-emoji" id="rsWelcomeEmoji">☀️</div>
+      <h1 class="display" id="rsWelcomeTitle" style="font-size:23px;text-align:center;"></h1>
+      <p id="rsWelcomeSub" style="text-align:center;color:var(--ink-soft);font-size:14px;max-width:300px;margin:8px auto 0;"></p>
+      <button class="pill-btn gold" id="rsBeginBtn" style="max-width:260px;margin-top:26px;"></button>
+    </div>
+
+    <div class="ritual-step" id="rs-breathe">
+      <h2 class="display" data-i18n="ritual_breathe_title" style="text-align:center;font-size:19px;">Let's take three slow breaths</h2>
+      <div class="breath-circle-wrap"><div class="breath-circle" id="breathCircle"></div><div class="breath-count" id="breathCount">3</div></div>
+      <div class="breath-stage" id="breathStage"></div>
+      <button class="pill-btn ghost" id="rsBreatheContinue" style="max-width:260px;margin:20px auto 0;" data-i18n="ritual_continue">Continue</button>
+    </div>
+
+    <div class="ritual-step" id="rs-weather">
+      <h2 class="display" style="text-align:center;font-size:20px;" data-i18n="ritual_weather_title">What's your inner weather today?</h2>
+      <p style="text-align:center;color:var(--ink-soft);font-size:13px;margin:2px 0 16px;" data-i18n="ritual_weather_sub">There's no wrong answer.</p>
+      <div class="weather-grid" id="weatherGrid"></div>
+      <div class="energy-row">
+        <span data-i18n="ritual_energy_label">Energy</span>
+        <input type="range" id="energySlider" min="1" max="5" value="3">
+        <span id="energyVal">3</span>
       </div>
-      <button class="pill-btn gold" id="obTitleNext">ابدأ لوحتي</button>
+      <button class="pill-btn gold" id="rsWeatherNext" style="margin-top:18px;" data-i18n="ritual_continue">Continue</button>
     </div>
+
+    <div class="ritual-step" id="rs-intention">
+      <h2 class="display" style="text-align:center;font-size:20px;" data-i18n="ritual_intention_title">Set today's intention</h2>
+      <p style="text-align:center;color:var(--ink-soft);font-size:13px;margin:2px 0 14px;" data-i18n="ritual_intention_sub">One sentence is enough.</p>
+      <textarea id="intentionInput" class="jq-input" data-i18n-ph="ritual_intention_ph" placeholder="Today I want to…" style="min-height:70px;"></textarea>
+      <p style="text-align:center;color:var(--ink-soft);font-size:13px;margin:16px 0 6px;" data-i18n="ritual_gratitude_title">One thing you're grateful for</p>
+      <textarea id="gratitudeInput" class="jq-input" data-i18n-ph="ritual_gratitude_ph" placeholder="I'm grateful for…" style="min-height:60px;"></textarea>
+      <button class="pill-btn gold" id="rsIntentionNext" style="margin-top:16px;" data-i18n="ritual_finish">Finish ritual</button>
+    </div>
+
+    <div class="ritual-step" id="rs-done">
+      <div class="ritual-emoji">✨</div>
+      <h2 class="display" style="text-align:center;font-size:21px;" data-i18n="ritual_done_title">Your day has a good start.</h2>
+      <p id="rsDoneSub" style="text-align:center;color:var(--ink-soft);font-size:14px;max-width:300px;margin:8px auto 0;"></p>
+      <div class="card" id="rsStreakCard" style="margin-top:18px;max-width:300px;"></div>
+      <button class="pill-btn gold" id="rsEnterBtn" style="max-width:260px;margin-top:20px;" data-i18n="ritual_enter">Enter Morning OS</button>
+    </div>
+
   </div>
 </div>
 
 <!-- ============ APP SHELL ============ -->
 <div id="shell">
   <div id="topbar">
-    <div class="brand"><span class="dot"></span><span>بحثي</span></div>
+    <div class="brand"><span class="dot"></span><span>Morning OS</span></div>
     <div class="right-controls">
-      <button class="icon-btn" id="settingsBtn" aria-label="الإعدادات">
+      <button class="icon-btn" id="langToggle">EN</button>
+      <button class="icon-btn" id="settingsBtn" aria-label="Settings">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 005.6 15a1.65 1.65 0 00-1.51-1H4a2 2 0 010-4h.09A1.65 1.65 0 005.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       </button>
     </div>
@@ -61,204 +112,179 @@
 
   <div id="screens">
 
-    <!-- ============ HOME ============ -->
+    <!-- HOME -->
     <section class="screen active" id="screen-home">
       <div class="section" style="padding-top:6px;">
 
         <div class="bento-grid">
+          <!-- HERO -->
           <div class="bento full bento-mustard" id="heroBento">
-            <div class="bento-icon" style="font-size:20px;">🎓</div>
-            <div class="hero-eyebrow" id="heroEyebrow" style="position:relative;z-index:1;font-size:11.5px;font-weight:800;margin-top:14px;opacity:.72;">لوحتك البحثية</div>
-            <h1 class="bento-title" id="heroGreeting" style="font-size:21px;margin-top:4px;"></h1>
-            <p class="bento-sub" id="heroThesisTitle" style="font-size:12.5px;max-width:96%;"></p>
+            <div class="bento-icon num" id="heroIcon" style="font-size:20px;">☀️</div>
+            <div class="hero-eyebrow" id="heroEyebrow" style="position:relative;z-index:1;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;opacity:.72;margin-top:14px;"></div>
+            <h1 class="bento-title" id="heroGreeting" style="font-size:23px;margin-top:4px;"></h1>
+            <p class="bento-sub" id="heroSub" style="font-size:12.5px;max-width:90%;"></p>
             <div style="display:flex;align-items:center;gap:16px;margin-top:18px;position:relative;z-index:1;">
-              <div class="ring ring-hero on-color" id="progressRing" style="--pct:0"><div class="ring-inner"><b id="progressVal" class="num">–</b><span>%</span></div></div>
-              <div style="flex:1;">
-                <div class="bento-sub" style="margin:0 0 2px;font-weight:800;color:inherit;">المرحلة الحالية</div>
-                <div class="bento-title" id="currentStageLabel" style="font-size:15px;margin:0;"></div>
-              </div>
+              <div class="ring ring-hero on-color" id="scoreRing" style="--pct:0"><div class="ring-inner"><b id="scoreVal" class="num">–</b><span data-i18n="out_of_100">/100</span></div></div>
+              <div class="cal-strip" id="calStrip" style="flex:1;"></div>
             </div>
           </div>
 
-          <div class="bento bento-lavender">
-            <div class="bento-icon">✅</div>
-            <div class="bento-title">المهمة الحالية</div>
-            <div class="bento-sub" id="currentTaskText"></div>
+          <!-- RITUAL CTA -->
+          <div class="bento bento-coral clickable" id="ritualCta">
+            <div class="bento-icon" id="ritualCtaIcon">☀️</div>
+            <div class="bento-title" id="ritualCtaTitle"></div>
+            <div class="bento-sub" id="ritualCtaSub"></div>
           </div>
 
-          <div class="bento bento-sage clickable" id="nextStepCard">
-            <div class="bento-icon">➡️</div>
-            <div class="bento-title">الخطوة التالية</div>
-            <div class="bento-sub" id="nextStepText"></div>
+          <!-- HYDRATION -->
+          <div class="bento bento-sage" id="hydrationBento">
+            <div class="bento-icon">💧</div>
+            <div class="bento-title" data-i18n="hydration">Hydration</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;position:relative;z-index:1;">
+              <button class="water-btn" id="waterMinus" style="width:32px;height:32px;font-size:15px;background:rgba(255,255,255,.55);">−</button>
+              <div style="text-align:center;"><b class="num" id="waterCount" style="font-size:19px;">0</b><div style="font-size:10px;" id="waterGoalLabel"></div></div>
+              <button class="water-btn" id="waterPlus" style="width:32px;height:32px;font-size:15px;background:rgba(255,255,255,.55);">+</button>
+            </div>
           </div>
         </div>
 
-        <div class="bento full bento-coral clickable" id="nextDeadlineCard" style="margin-top:12px;">
-          <div class="bento-icon">⏰</div>
-          <div class="bento-title" id="nextDeadlineTitle" style="font-size:15px;"></div>
-          <div class="bento-sub" id="nextDeadlineSub"></div>
+        <div class="stat-chip-row" style="margin-top:12px;">
+          <div class="stat-chip"><div class="sc-val" id="statMood">–</div><div class="sc-lbl" data-i18n="stat_mood">Mood</div></div>
+          <div class="stat-chip"><div class="sc-val num" id="statWater">0/8</div><div class="sc-lbl" data-i18n="stat_water">Water</div></div>
+          <div class="stat-chip"><div class="sc-val num" id="statStreak">0</div><div class="sc-lbl" data-i18n="stat_streak">Streak</div></div>
         </div>
 
-        <div class="section-title" style="margin-top:22px;"><span>رحلة البحث</span></div>
-        <div class="card"><div class="stepper-row" id="journeyStepper"></div></div>
+        <div class="card" id="scoreWhyCard" style="margin-top:12px;display:none;">
+          <p id="scoreWhyText" style="margin:0;font-size:12.5px;color:var(--ink-soft);line-height:1.6;"></p>
+        </div>
 
-        <div class="section-title" style="margin-top:22px;"><span>تقدّم المقترح</span><span id="proposalCountLabel" style="font-weight:600;color:var(--ink-faint);font-size:11.5px;"></span></div>
-        <div class="bento-grid" id="proposalGridHome"></div>
+        <div class="section-title" style="margin-top:22px;"><span data-i18n="perf_section_title">Performance</span></div>
+        <p class="section-lede" data-i18n="perf_section_sub">Four daily practices that build on each other, day by day.</p>
+        <div class="bento-grid" id="performanceGrid"></div>
 
-        <div class="section-title" style="margin-top:22px;"><span>مكتبة الأدبيات</span></div>
-        <div class="card clickable" id="litSummaryCard" style="cursor:pointer;">
-          <div class="stat-chip-row" style="margin-bottom:0;">
-            <div class="stat-chip"><div class="sc-val num" id="statCollected">0</div><div class="sc-lbl">تم جمعها</div></div>
-            <div class="stat-chip"><div class="sc-val num" id="statReviewed">0</div><div class="sc-lbl">تمت مراجعتها</div></div>
-            <div class="stat-chip"><div class="sc-val num" id="statRemaining">0</div><div class="sc-lbl">متبقية</div></div>
-          </div>
+        <div class="section-title" style="margin-top:22px;"><span data-i18n="this_week">This Week</span></div>
+        <div class="bento full bento-lavender">
+          <div class="bento-icon">📈</div>
+          <svg class="sparkline" id="weekSparkline" viewBox="0 0 300 60" preserveAspectRatio="none"></svg>
         </div>
       </div>
     </section>
 
-    <!-- ============ PROPOSAL ============ -->
-    <section class="screen" id="screen-proposal">
-      <div class="section" style="padding-top:14px;">
-        <div class="screen-eyebrow"><span class="dot"></span><span>مسار البحث</span></div>
-        <h1 class="display" style="font-size:22px;margin:0 0 4px;">البروبوزال</h1>
-        <p style="color:var(--ink-soft);font-size:13px;margin:0 0 16px;">من مراجعة الأدبيات للفجوة، للهدف، للمنهجية — كل قسم يبني على اللي قبله.</p>
-
-        <div class="card"><div class="stepper-row" id="journeyStepper2"></div></div>
-
-        <div class="section-title" style="margin-top:22px;"><span>أقسام المقترح</span></div>
-        <div id="sectionsList"></div>
-
-        <div class="section-title" style="margin-top:24px;"><span>🔍 الفجوة البحثية</span></div>
-        <div class="card gap-card">
-          <div class="gap-block">
-            <div class="gap-label"><span class="gap-emoji">✅</span><span>ما نعرفه — Existing Evidence</span></div>
-            <textarea class="gap-textarea" id="gapKnown" placeholder="شو أثبتته الدراسات السابقة؟"></textarea>
-          </div>
-          <div class="gap-arrow">↓</div>
-          <div class="gap-block">
-            <div class="gap-label"><span class="gap-emoji">❔</span><span>ما لا نعرفه — Missing Evidence</span></div>
-            <textarea class="gap-textarea" id="gapUnknown" placeholder="شو لسا مو مدروس أو غير واضح؟"></textarea>
-          </div>
-          <div class="gap-arrow">↓</div>
-          <div class="gap-block highlight">
-            <div class="gap-label"><span class="gap-emoji">🔍</span><span>الفجوة البحثية — Research Gap</span></div>
-            <textarea class="gap-textarea" id="gapStatement" placeholder="اكتب الفجوة البحثية بجملة أو جملتين واضحة"></textarea>
-          </div>
-          <div class="gap-arrow">↓</div>
-          <div class="gap-block" style="border-bottom:none;padding-bottom:2px;">
-            <div class="gap-label"><span class="gap-emoji">🎯</span><span>ما ستدرسه — Your Study</span></div>
-            <textarea class="gap-textarea" id="gapYourStudy" placeholder="كيف ستعالج دراستك هالفجوة؟"></textarea>
-          </div>
+    <!-- PERFORMANCE DOMAIN DETAIL -->
+    <section class="screen" id="screen-domain">
+      <div class="domain-banner" id="domainBanner">
+        <button class="domain-back" id="domainBack" aria-label="Back">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="domain-banner-emoji" id="domainEmoji">🌙</div>
+        <div class="domain-banner-name" id="domainName"></div>
+        <div class="domain-banner-tag" id="domainTag"></div>
+        <div class="domain-badges">
+          <span class="domain-badge" id="domainDayBadge"></span>
+          <span class="domain-badge ghost" id="domainStreakBadge"></span>
         </div>
-        <div class="warning-banner" id="gapWarning" style="display:none;">
-          <span class="wb-emoji">⚠️</span>
-          <span>الفجوة البحثية لسا ما ترتبط بوضوح بهدف الدراسة — كمّل قسم "الهدف وأسئلة البحث" تحت لتربطهم.</span>
+      </div>
+
+      <div class="section" style="padding-top:16px;">
+        <p class="empty-note domain-cycle-note" id="domainCycleNote" style="display:none;"></p>
+
+        <div class="domain-dots" id="domainDots"></div>
+
+        <div class="lesson-card lesson-action">
+          <div class="lesson-kicker" data-i18n="lbl_today_action">Today</div>
+          <p class="lesson-text" id="domainActionText"></p>
         </div>
 
-        <div class="section-title" style="margin-top:24px;"><span>🎯 الهدف وأسئلة البحث</span></div>
-        <div class="connector-row">
-          <span class="connector-chip">الفجوة</span><span class="connector-sep">←</span>
-          <span class="connector-chip">الهدف</span><span class="connector-sep">←</span>
-          <span class="connector-chip">الأسئلة</span>
-        </div>
-        <div class="card">
-          <div class="study-row-label" style="margin-top:0;">هدف الدراسة — Aim</div>
-          <textarea class="gap-textarea" id="aimStatement" placeholder="اكتب هدف دراستك بجملة واضحة ومباشرة"></textarea>
-          <div class="study-row-label">أسئلة البحث — Research Questions</div>
-          <div id="aimQuestionsList"></div>
+        <div class="lesson-card">
+          <div class="lesson-kicker" data-i18n="lbl_why">Why it matters</div>
+          <p class="lesson-text" id="domainWhyText"></p>
         </div>
 
-        <div class="section-title" style="margin-top:24px;"><span>🧪 المنهجية</span></div>
-        <div class="card">
-          <div class="method-field">
-            <span class="method-label">Study Design</span>
-            <div class="chip-toggle-row" id="designChips">
-              <button class="chip-toggle" data-val="Qualitative">Qualitative</button>
-              <button class="chip-toggle" data-val="Quantitative">Quantitative</button>
-              <button class="chip-toggle" data-val="Mixed Methods">Mixed Methods</button>
-            </div>
+        <div class="lesson-split">
+          <div class="lesson-card lesson-positive">
+            <div class="lesson-kicker" data-i18n="lbl_if_you_do">If you keep this up</div>
+            <p class="lesson-text" id="domainPositiveText"></p>
           </div>
-          <div class="method-field">
-            <span class="method-label">Study Setting</span>
-            <input class="method-input" id="methodSetting" placeholder="مثال: وحدة العناية المركزة بمستشفى...">
-          </div>
-          <div class="method-field">
-            <span class="method-label">Population</span>
-            <input class="method-input" id="methodPopulation" placeholder="الفئة المستهدفة بالدراسة">
-          </div>
-          <div class="method-field">
-            <span class="method-label">Inclusion Criteria</span>
-            <textarea class="method-input" id="methodInclusion" placeholder="معايير الإدراج"></textarea>
-          </div>
-          <div class="method-field">
-            <span class="method-label">Exclusion Criteria</span>
-            <textarea class="method-input" id="methodExclusion" placeholder="معايير الاستبعاد"></textarea>
-          </div>
-          <div class="method-field">
-            <span class="method-label">Sample Size</span>
-            <input class="method-input" id="methodSampleSize" placeholder="مثال: 120 ممرض/ة">
-          </div>
-          <div class="method-field">
-            <span class="method-label">Sampling Technique</span>
-            <input class="method-input" id="methodSamplingTech" placeholder="مثال: Convenience Sampling">
-          </div>
-          <div class="method-field">
-            <span class="method-label">Data Collection</span>
-            <div class="chip-toggle-row" id="dataCollectionChips">
-              <button class="chip-toggle" data-val="Interview">Interview</button>
-              <button class="chip-toggle" data-val="Questionnaire">Questionnaire</button>
-              <button class="chip-toggle" data-val="Observation">Observation</button>
-              <button class="chip-toggle" data-val="Other">Other</button>
-            </div>
-          </div>
-          <div class="method-field" style="margin-bottom:0;">
-            <span class="method-label">Study Tool</span>
-            <div class="chip-toggle-row" id="studyToolChips">
-              <button class="chip-toggle" data-val="Existing Tool">Existing Tool</button>
-              <button class="chip-toggle" data-val="Developed Tool">Developed Tool</button>
-            </div>
+          <div class="lesson-card lesson-negative">
+            <div class="lesson-kicker" data-i18n="lbl_if_you_skip">If you skip it</div>
+            <p class="lesson-text" id="domainNegativeText"></p>
           </div>
         </div>
+
+        <button class="pill-btn domain-done-btn" id="domainDoneBtn"></button>
       </div>
     </section>
 
-    <!-- ============ LITERATURE ============ -->
-    <section class="screen" id="screen-literature">
+    <!-- JOURNAL -->
+    <section class="screen" id="screen-journal">
       <div class="section" style="padding-top:14px;">
-        <div class="screen-eyebrow"><span class="dot"></span><span>مكتبة الأدلة البحثية</span></div>
-        <h1 class="display" style="font-size:22px;margin:0 0 4px;">الأدبيات</h1>
-        <p style="color:var(--ink-soft);font-size:13px;margin:0 0 14px;">الدراسات اللي جمعتها، منظّمة حسب الموضوع البحثي.</p>
+        <div class="screen-eyebrow"><span class="dot"></span><span data-i18n="journal_eyebrow">Brain dump</span></div>
+        <h1 class="display" data-i18n="nav_journal" style="font-size:22px;margin:0 0 4px;"></h1>
+        <p style="color:var(--ink-soft);font-size:13px;margin:0 0 16px;" data-i18n="journal_sub">A private place to empty your mind. Nothing here leaves your device.</p>
 
-        <div class="stat-chip-row">
-          <div class="stat-chip"><div class="sc-val num" id="litStatCollected">0</div><div class="sc-lbl">تم جمعها</div></div>
-          <div class="stat-chip"><div class="sc-val num" id="litStatReviewed">0</div><div class="sc-lbl">تمت مراجعتها</div></div>
-          <div class="stat-chip"><div class="sc-val num" id="litStatRemaining">0</div><div class="sc-lbl">متبقية</div></div>
+        <div class="journal-hero">
+          <div class="mood-row" id="journalMoodRow"></div>
+          <textarea id="journalInput" class="jq-input" data-i18n-ph="journal_ph" placeholder="What's on your mind…" style="min-height:120px;margin-top:12px;border-color:transparent;"></textarea>
+          <div class="suggest-row" id="journalSuggestRow" style="margin-top:10px;"></div>
+          <button class="pill-btn" id="journalSaveBtn" style="margin-top:12px;background:var(--btn-bg);color:var(--btn-ink);" data-i18n="journal_save">Save entry</button>
         </div>
 
-        <button class="pill-btn" id="addStudyBtn" style="margin-top:14px;background:var(--btn-bg);color:var(--btn-ink);width:auto;padding:11px 20px;">+ إضافة دراسة</button>
-
-        <div class="filter-row" id="litFilterRow" style="margin-top:16px;"></div>
-
-        <div id="studiesByTheme"></div>
-        <p class="empty-note" id="studiesEmpty" style="display:none;">ما في دراسات مطابقة لهذا الفلتر بعد.</p>
+        <div class="section-title" style="margin-top:26px;"><span data-i18n="journal_entries">Your entries</span><span id="journalCount" style="font-weight:600;color:var(--ink-faint);"></span></div>
+        <input type="text" id="journalSearch" class="search-input" data-i18n-ph="journal_search_ph" placeholder="Search your entries…">
+        <div id="journalList" style="margin-top:12px;"></div>
+        <p class="empty-note" id="journalEmpty" data-i18n="journal_empty" style="display:none;"></p>
       </div>
     </section>
 
-    <!-- ============ TASKS ============ -->
-    <section class="screen" id="screen-tasks">
+    <!-- AI MEMORY -->
+    <section class="screen" id="screen-memory">
+      <div class="section" style="padding-top:14px;padding-bottom:0;">
+        <div class="screen-eyebrow"><span class="dot"></span><span data-i18n="memory_eyebrow">On-device companion</span></div>
+        <h1 class="display" data-i18n="nav_memory" style="font-size:22px;margin:0 0 4px;"></h1>
+        <p style="color:var(--ink-soft);font-size:13px;margin:0 0 4px;" data-i18n="memory_sub">A reflection companion that runs entirely on this device — it remembers your patterns, not your data leaving your phone.</p>
+        <div class="memory-chips" id="memoryChips"></div>
+      </div>
+      <div class="chat-wrap" id="chatWrap"></div>
+      <div id="chatInputBar">
+        <input id="chatInput" type="text" data-i18n-ph="chat_placeholder" placeholder="Tell me anything…" autocomplete="off">
+        <button id="chatSend" aria-label="Send"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+      </div>
+    </section>
+
+    <!-- INSIGHTS -->
+    <section class="screen" id="screen-insights">
       <div class="section" style="padding-top:14px;">
-        <div class="screen-eyebrow"><span class="dot"></span><span>خطة العمل</span></div>
-        <h1 class="display" style="font-size:22px;margin:0 0 4px;">مهامي القادمة</h1>
-        <p style="color:var(--ink-soft);font-size:13px;margin:0 0 4px;" id="tasksSummaryText"></p>
+        <div class="screen-eyebrow"><span class="dot"></span><span data-i18n="insights_eyebrow">Your data, decoded</span></div>
+        <h1 class="display" data-i18n="nav_insights" style="font-size:22px;margin:0 0 4px;"></h1>
+        <p style="color:var(--ink-soft);font-size:13px;margin:0 0 16px;" data-i18n="insights_sub">How your Life Score is built, day by day.</p>
 
-        <button class="pill-btn" id="addTaskBtn" style="margin-top:12px;background:var(--btn-bg);color:var(--btn-ink);width:auto;padding:11px 20px;">+ مهمة جديدة</button>
+        <div class="bento bento-lavender">
+          <div class="ring ring-hero on-color" id="scoreRing2" style="--pct:0"><div class="ring-inner"><b id="scoreVal2" class="num">–</b><span data-i18n="out_of_100">/100</span></div></div>
+          <div style="margin-top:14px;position:relative;z-index:1;">
+            <b class="bento-title" style="font-size:14px;" data-i18n="insights_today">Today's score</b>
+            <p class="bento-sub" id="insightsTodayText" style="margin:4px 0 0;"></p>
+          </div>
+        </div>
 
-        <div class="section-title" style="margin-top:20px;"><span>قيد العمل ولم تبدأ</span></div>
-        <div id="tasksOpenList"></div>
+        <div class="stat-chip-row" style="margin-top:16px;">
+          <div class="stat-chip"><div class="sc-val num" id="statAvg">–</div><div class="sc-lbl" data-i18n="stat_avg">7-day avg</div></div>
+          <div class="stat-chip"><div class="sc-val num" id="statBest">–</div><div class="sc-lbl" data-i18n="stat_best">Best day</div></div>
+          <div class="stat-chip"><div class="sc-val num" id="statLongStreak">–</div><div class="sc-lbl" data-i18n="stat_long_streak">Best streak</div></div>
+        </div>
 
-        <div class="section-title" style="margin-top:20px;"><span>مكتملة</span></div>
-        <div id="tasksDoneList"></div>
-        <p class="empty-note" id="tasksDoneEmpty" style="display:none;">ما خلّصت أي مهمة بعد.</p>
+        <div class="section-title" style="margin-top:22px;"><span data-i18n="score_breakdown">Breakdown</span></div>
+        <div class="card" id="breakdownCard"></div>
+
+        <div class="section-title" style="margin-top:22px;"><span data-i18n="score_history">History</span></div>
+        <div class="tabs" id="historyTabs">
+          <button data-days="7" class="active" data-i18n="tab_week">Week</button>
+          <button data-days="14" data-i18n="tab_2weeks">2 Weeks</button>
+          <button data-days="30" data-i18n="tab_month">Month</button>
+        </div>
+        <div class="card"><div class="week-bars" id="weekBars2" style="height:110px;"></div></div>
+
+        <div class="section-title" style="margin-top:22px;"><span data-i18n="ritual_history">Ritual History</span></div>
+        <div id="ritualHistoryList"></div>
       </div>
     </section>
 
@@ -267,19 +293,19 @@
   <div id="nav">
     <button class="nav-btn active" data-screen="home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
-      <span>الرئيسية</span>
+      <span data-i18n="nav_home">Home</span>
     </button>
-    <button class="nav-btn" data-screen="proposal">
+    <button class="nav-btn" data-screen="journal">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
-      <span>البروبوزال</span>
+      <span data-i18n="nav_journal">Journal</span>
     </button>
-    <button class="nav-btn" data-screen="literature">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 7h6M9 11h6"/></svg>
-      <span>الأدبيات</span>
+    <button class="nav-btn" data-screen="memory">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 00-4 4c0 1 .3 1.7.8 2.3A4 4 0 007 12a4 4 0 001 2.6V17a3 3 0 003 3h2a3 3 0 003-3v-2.4a4 4 0 001-2.6 4 4 0 00-.8-3.7c.5-.6.8-1.3.8-2.3a4 4 0 00-4-4z"/><path d="M9 21h6"/></svg>
+      <span data-i18n="nav_memory">AI Memory</span>
     </button>
-    <button class="nav-btn" data-screen="tasks">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-      <span>المهام</span>
+    <button class="nav-btn" data-screen="insights">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+      <span data-i18n="nav_insights">Insights</span>
     </button>
   </div>
 </div>
@@ -289,20 +315,28 @@
   <div class="modal">
     <div class="modal-handle"></div>
     <button class="close-x" id="settingsClose">✕</button>
-    <h2>الإعدادات</h2>
+    <h2 data-i18n="settings_title">Settings</h2>
     <div class="setting-row">
-      <span class="sr-label">الوضع الداكن</span>
+      <span class="sr-label" data-i18n="settings_language">Language</span>
+      <div class="seg-toggle" id="langSeg"><button data-lang="en">EN</button><button data-lang="ar">AR</button></div>
+    </div>
+    <div class="setting-row">
+      <span class="sr-label" data-i18n="settings_dark">Dark mode</span>
       <button class="toggle" id="darkToggle"></button>
     </div>
     <div class="setting-row">
-      <span class="sr-label">تصدير بياناتك</span>
-      <button class="pill-btn ghost" id="exportBtn" style="width:auto;padding:9px 16px;">تحميل</button>
+      <span class="sr-label" data-i18n="settings_water_goal">Daily water goal</span>
+      <div class="seg-toggle" id="waterGoalSeg"><button data-val="6">6</button><button data-val="8">8</button><button data-val="10">10</button><button data-val="12">12</button></div>
     </div>
     <div class="setting-row">
-      <span class="sr-label">مسح كل البيانات</span>
-      <button class="pill-btn ghost" id="resetBtn" style="width:auto;padding:9px 16px;color:#B5473A;">مسح</button>
+      <span class="sr-label" data-i18n="settings_export">Export your data</span>
+      <button class="pill-btn ghost" id="exportBtn" style="width:auto;padding:9px 16px;" data-i18n="settings_export_btn">Download</button>
     </div>
-    <p class="empty-note" style="margin-top:14px;">بحثي يحفظ كل شي على جهازك بس، بالتخزين المحلي للمتصفح. حذف التطبيق أو مسح بيانات الموقع بيمسحه نهائياً — صدّر بياناتك أول إذا تبي نسخة احتياطية.</p>
+    <div class="setting-row">
+      <span class="sr-label" data-i18n="settings_reset">Reset all data</span>
+      <button class="pill-btn ghost" id="resetBtn" style="width:auto;padding:9px 16px;color:#B5473A;" data-i18n="settings_reset_btn">Reset</button>
+    </div>
+    <p class="empty-note" data-i18n="settings_privacy_note" style="margin-top:14px;"></p>
   </div>
 </div>
 
@@ -315,7 +349,8 @@
   </div>
 </div>
 
-<script src="js/data.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/lessons.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
