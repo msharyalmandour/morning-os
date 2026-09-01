@@ -158,6 +158,8 @@
           <p id="scoreWhyText" style="margin:0;font-size:12.5px;color:var(--ink-soft);line-height:1.6;"></p>
         </div>
 
+        <div class="card" id="rhythmNudgeCard" style="margin-top:12px;display:none;background:var(--gold-soft);border-color:transparent;font-size:12.5px;font-weight:700;"></div>
+
         <div class="section-title" style="margin-top:22px;"><span data-i18n="life_map_title">Life Map</span></div>
         <p class="section-lede" data-i18n="life_map_sub">Your four external pillars, at a glance.</p>
         <div class="card">
@@ -249,6 +251,10 @@
         <div class="journal-hero">
           <div class="mood-row" id="journalMoodRow"></div>
           <textarea id="journalInput" class="jq-input" data-i18n-ph="journal_ph" placeholder="What's on your mind…" style="min-height:120px;margin-top:12px;border-color:transparent;"></textarea>
+          <div id="journalVoiceRow" style="display:none;align-items:center;gap:10px;margin-top:8px;">
+            <button type="button" id="journalVoiceBtn" class="water-btn" style="width:36px;height:36px;font-size:15px;">🎙️</button>
+            <span style="font-size:10.5px;color:var(--ink-faint);line-height:1.4;" data-i18n="journal_voice_disclaimer"></span>
+          </div>
           <input id="journalTriggerInput" type="text" class="jq-input" data-i18n-ph="journal_trigger_ph" placeholder="What set this off, if anything…" style="margin-top:8px;border-color:transparent;font-size:12.5px;padding:10px 14px;">
           <div class="suggest-row" id="journalSuggestRow" style="margin-top:10px;"></div>
           <button class="pill-btn" id="journalSaveBtn" style="margin-top:12px;background:var(--btn-bg);color:var(--btn-ink);" data-i18n="journal_save">Save entry</button>
@@ -297,6 +303,9 @@
           <div class="stat-chip"><div class="sc-val num" id="statLongStreak">–</div><div class="sc-lbl" data-i18n="stat_long_streak">Best streak</div></div>
         </div>
 
+        <div class="section-title" style="margin-top:22px;"><span data-i18n="correlation_title">How your pillars connect</span></div>
+        <div class="card" id="correlationCard"></div>
+
         <div class="section-title" style="margin-top:22px;"><span data-i18n="score_breakdown">Breakdown</span></div>
         <div class="card" id="breakdownCard"></div>
 
@@ -333,6 +342,18 @@
       <span data-i18n="nav_insights">Insights</span>
     </button>
   </div>
+
+  <button class="rescue-fab" id="rescueFab" aria-label="Rescue">🆘</button>
+</div>
+
+<!-- ============ RESCUE MODE ============ -->
+<div id="rescueOverlay" class="overlay-full hidden">
+  <div style="width:100%;max-width:360px;text-align:center;">
+    <h2 class="display" style="font-size:20px;margin-bottom:6px;" data-i18n="rescue_title">Take 90 seconds before you decide</h2>
+    <p style="color:var(--ink-soft);font-size:13px;margin:0 0 24px;" data-i18n="rescue_sub"></p>
+    <div class="breath-circle-wrap"><div class="breath-circle rescue-pulse"></div><div class="breath-count num" id="rescueCountdown">90</div></div>
+    <button class="pill-btn ghost" id="rescueSkipBtn" style="max-width:200px;margin:28px auto 0;" data-i18n="rescue_skip">Skip</button>
+  </div>
 </div>
 
 <!-- ============ SETTINGS OVERLAY ============ -->
@@ -352,6 +373,10 @@
     <div class="setting-row">
       <span class="sr-label" data-i18n="settings_focus">Focus area</span>
       <button class="pill-btn ghost" id="changeFocusBtn" style="width:auto;padding:9px 16px;" data-i18n="settings_change_focus">Change</button>
+    </div>
+    <div class="setting-row">
+      <span class="sr-label" data-i18n="settings_values">Your values</span>
+      <button class="pill-btn ghost" id="changeValuesBtn" style="width:auto;padding:9px 16px;" data-i18n="settings_change_values">Set</button>
     </div>
     <div class="setting-row">
       <span class="sr-label" data-i18n="settings_water_goal">Daily water goal</span>

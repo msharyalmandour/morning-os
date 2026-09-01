@@ -17,10 +17,11 @@ const DEFAULT_STATE = {
   streak: 0,                 // momentum score, 0-100 (name kept for storage back-compat)
   chatLog: [],               // [{who:'ai'|'user', text, ts}]
   performance: defaultPerformance(), // { [domainKey]: { history: {'YYYY-MM-DD': true} } }
-  digital: { entries: [] },  // urge log: [{id, ts, date, trigger, urgeType, response, alternative}]
+  digital: { entries: [], recoveryUntil: null },  // urge log: [{id, ts, date, trigger, urgeType, response, alternative, bodySignals, viaRescue}]
   premium: false,
   focusArea: null,           // one of FOCUS_AREAS keys — set at onboarding, changeable in Settings
-  lastReflectionAt: null     // 'YYYY-MM-DD' of the last weekly AI reflection shown
+  lastReflectionAt: null,    // 'YYYY-MM-DD' of the last weekly AI reflection shown
+  values: []                 // up to 3 VALUES keys, set from Settings
 };
 let state = loadState();
 function loadState(){
@@ -40,20 +41,21 @@ function loadState(){
       }
       merged.performance = perf;
       if(parsed.digital && Array.isArray(parsed.digital.entries)){
-        merged.digital = { entries: parsed.digital.entries };
+        merged.digital = { entries: parsed.digital.entries, recoveryUntil: parsed.digital.recoveryUntil || null };
       } else if(parsed.digital && parsed.digital.history){
         // migrate the old single-daily-rating format into urge-log entries
         merged.digital = { entries: Object.keys(parsed.digital.history).map(dateStr=>{
           const old = parsed.digital.history[dateStr];
           const response = old.awareness>=4 ? 'resisted' : old.awareness<=2 ? 'gave_in' : 'partial';
           return { id:newId(), ts:new Date(dateStr+'T12:00:00').getTime(), date:dateStr, trigger:'', urgeType:'digital', response, alternative: old.note||'' };
-        }) };
+        }), recoveryUntil: null };
       } else {
-        merged.digital = { entries: [] };
+        merged.digital = { entries: [], recoveryUntil: null };
       }
       merged.premium = !!parsed.premium;
       merged.focusArea = parsed.focusArea || null;
       merged.lastReflectionAt = parsed.lastReflectionAt || null;
+      merged.values = Array.isArray(parsed.values) ? parsed.values : [];
       return merged;
     }
   }catch(e){}
@@ -283,6 +285,7 @@ function renderHome(){
   renderLifeMap();
   renderDigitalCard();
   renderWhatsNewCard();
+  renderRhythmNudge();
 }
 function renderCalStrip(){
   const wrap = document.getElementById('calStrip'); if(!wrap) return;
@@ -430,6 +433,7 @@ const URGE_TRIGGERS = [
 ];
 const URGE_TYPES = [ {key:'phone', emoji:'📱'}, {key:'food', emoji:'🍬'}, {key:'other', emoji:'➕'} ];
 const URGE_RESPONSES = [ {key:'resisted', emoji:'✅'}, {key:'partial', emoji:'➗'}, {key:'gave_in', emoji:'🔁'} ];
+const BODY_SIGNALS = [ {key:'jaw', emoji:'😬'}, {key:'breath', emoji:'💨'}, {key:'shoulders', emoji:'🙆'}, {key:'none', emoji:'✖️'} ];
 const URGE_ALT_SUGGESTIONS = {
   boredom:{en:"Try a 2-minute walk instead", ar:"جرب مشية دقيقتين بدلها"},
   stress:{en:"Try 4-6 breathing for one minute", ar:"جرب تنفس 4-6 لدقيقة"},
@@ -453,9 +457,64 @@ function renderDigitalCard(){
   const resisted = todayEntries.filter(e=>e.response==='resisted').length;
   badge.textContent = t('digital_card_logged')(todayEntries.length, resisted);
 }
-let urgeSelected = { trigger:null, type:null, response:null };
-function buildUrgeOptGrid(items, groupKey, i18nPrefix){
-  return `<div class="weather-grid" style="grid-template-columns:repeat(3,1fr);" data-group="${groupKey}">${
+
+/* -------- recovery window: a fast bounce-back after "gave in" earns a bonus -------- */
+function isInRecoveryWindow(){ return !!state.digital.recoveryUntil && Date.now() < state.digital.recoveryUntil; }
+function consumeRecoveryWindow(){
+  if(!isInRecoveryWindow()) return false;
+  state.digital.recoveryUntil = null;
+  saveState();
+  return true;
+}
+function showToast(text){
+  const el = document.createElement('div');
+  el.className = 'recovery-toast';
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(()=> el.remove(), 2600);
+}
+function maybeShowRecoveryToast(){ showToast(t('recovery_toast')); }
+
+/* -------- values compass: occasionally connect an action back to a chosen value -------- */
+const VALUES = ['health','family','growth','connection','discipline','creativity'];
+const DOMAIN_VALUE_MAP = { sleep:['health'], nutrition:['health'], movement:['health'], social:['connection','family'] };
+function maybeShowValueConnector(candidates){
+  if(!state.values.length || !candidates || !candidates.length || Math.random()>0.4) return;
+  const match = candidates.find(v=>state.values.includes(v));
+  if(!match) return;
+  showToast('✨ ' + t('values_serves')(t('value_'+match)));
+}
+function openValuesPicker(){
+  let picked = state.values.slice();
+  openView(`<h2 style="margin-bottom:4px;">${t('values_title')}</h2>
+    <p style="color:var(--ink-soft);font-size:12.5px;margin:0 0 14px;">${t('values_sub')}</p>
+    <div class="ob-options" id="valuesPickerOptions"></div>
+    <button class="pill-btn gold" id="valuesPickerSave">${t('values_save')}</button>`);
+  function paint(){
+    const wrap = document.getElementById('valuesPickerOptions'); wrap.innerHTML='';
+    VALUES.forEach(v=>{
+      const b=document.createElement('button'); b.className='ob-opt'+(picked.includes(v)?' selected':'');
+      b.innerHTML = `<span>${t('value_'+v)}</span>`;
+      b.addEventListener('click', ()=>{
+        const i = picked.indexOf(v);
+        if(i===-1){ if(picked.length<3) picked.push(v); } else picked.splice(i,1);
+        paint();
+      });
+      wrap.appendChild(b);
+    });
+  }
+  paint();
+  document.getElementById('valuesPickerSave').addEventListener('click', ()=>{
+    state.values = picked;
+    saveState();
+    closeView();
+  });
+}
+
+let urgeSelected = { trigger:null, type:null, response:null, bodySignals:[] };
+let urgeViaRescue = false;
+function buildUrgeOptGrid(items, groupKey, i18nPrefix, multi){
+  return `<div class="weather-grid" style="grid-template-columns:repeat(3,1fr);" data-group="${groupKey}" data-multi="${multi?'1':'0'}">${
     items.map(it=>`<button type="button" class="weather-opt" data-val="${it.key}">${it.emoji}<small>${t(i18nPrefix+'_'+it.key)}</small></button>`).join('')
   }</div>`;
 }
@@ -465,44 +524,119 @@ function buildUrgeAltSuggestion(){
   row.innerHTML = `<button type="button" class="suggest-chip">${escapeHtml(s[lang])}</button>`;
   row.querySelector('.suggest-chip').addEventListener('click', ()=>{ document.getElementById('urgeAltInput').value = s[lang]; });
 }
-function openDigitalModal(){
-  urgeSelected = { trigger:null, type:null, response:null };
+function urgeHistoryStat(trigger, urgeType){
+  const past = state.digital.entries.filter(e=>e.trigger===trigger && e.urgeType===urgeType);
+  if(!past.length) return '';
+  const resisted = past.filter(e=>e.response==='resisted').length;
+  return t('urge_history_stat')(resisted, past.length);
+}
+function refreshUrgeHistoryStat(){
+  const el = document.getElementById('urgeHistoryStat'); if(!el) return;
+  if(urgeSelected.trigger && urgeSelected.type){
+    const txt = urgeHistoryStat(urgeSelected.trigger, urgeSelected.type);
+    el.textContent = txt; el.style.display = txt ? 'block' : 'none';
+  } else { el.style.display = 'none'; }
+}
+function openDigitalModal(opts){
+  opts = opts || {};
+  urgeSelected = { trigger:null, type:null, response:null, bodySignals:[] };
+  urgeViaRescue = !!opts.viaRescue;
   openView(`
     <h2 style="margin-bottom:4px;">${t('digital_modal_title')}</h2>
     <p style="color:var(--ink-soft);font-size:12.5px;margin:0 0 16px;">${t('digital_modal_sub')}</p>
-    <p style="font-size:12px;font-weight:800;color:var(--ink-soft);margin:0 0 8px;">${t('urge_step_trigger')}</p>
+    <p style="font-size:12px;font-weight:800;color:var(--ink-soft);margin:0 0 8px;">${t('body_signal_label')}</p>
+    ${buildUrgeOptGrid(BODY_SIGNALS,'body','body_signal',true)}
+    <p style="font-size:12px;font-weight:800;color:var(--ink-soft);margin:16px 0 8px;">${t('urge_step_trigger')}</p>
     ${buildUrgeOptGrid(URGE_TRIGGERS,'trigger','urge_trigger')}
     <p style="font-size:12px;font-weight:800;color:var(--ink-soft);margin:16px 0 8px;">${t('urge_step_type')}</p>
     ${buildUrgeOptGrid(URGE_TYPES,'type','urge_type')}
+    <p class="empty-note" id="urgeHistoryStat" style="display:none;margin:8px 0 0;text-align:start;"></p>
     <p style="font-size:12px;font-weight:800;color:var(--ink-soft);margin:16px 0 8px;">${t('urge_step_response')}</p>
     ${buildUrgeOptGrid(URGE_RESPONSES,'response','urge_response')}
     <p style="font-size:12px;font-weight:800;color:var(--ink-soft);margin:16px 0 8px;">${t('urge_alt_label')}</p>
     <div class="suggest-row" id="urgeAltSuggestRow" style="margin-bottom:8px;"></div>
     <textarea id="urgeAltInput" class="jq-input" placeholder="${t('digital_note_ph')}" style="min-height:56px;"></textarea>
     <button class="pill-btn gold" id="urgeSaveBtn" style="margin-top:16px;">${t('digital_save')}</button>
+    <button type="button" id="silentWinsLink" class="lang-inline" style="display:block;margin:14px auto 0;">${t('silent_wins_link')}</button>
   `);
   document.querySelectorAll('#viewBody .weather-grid').forEach(grid=>{
+    const group = grid.dataset.group, multi = grid.dataset.multi==='1';
     grid.querySelectorAll('.weather-opt').forEach(btn=> btn.addEventListener('click', ()=>{
-      const group = grid.dataset.group;
+      if(group==='body'){
+        if(btn.dataset.val==='none'){ urgeSelected.bodySignals=['none']; }
+        else{
+          urgeSelected.bodySignals = urgeSelected.bodySignals.filter(v=>v!=='none');
+          const i = urgeSelected.bodySignals.indexOf(btn.dataset.val);
+          if(i===-1) urgeSelected.bodySignals.push(btn.dataset.val); else urgeSelected.bodySignals.splice(i,1);
+        }
+        grid.querySelectorAll('.weather-opt').forEach(b=> b.classList.toggle('selected', urgeSelected.bodySignals.includes(b.dataset.val)));
+        return;
+      }
       urgeSelected[group] = btn.dataset.val;
       grid.querySelectorAll('.weather-opt').forEach(b=> b.classList.toggle('selected', b===btn));
       if(group==='trigger') buildUrgeAltSuggestion();
+      if(group==='trigger' || group==='type') refreshUrgeHistoryStat();
     }));
   });
+  document.getElementById('silentWinsLink').addEventListener('click', openSilentWins);
   document.getElementById('urgeSaveBtn').addEventListener('click', ()=>{
     if(!urgeSelected.trigger || !urgeSelected.type || !urgeSelected.response) return;
+    const cameBackFast = urgeSelected.response!=='gave_in' && consumeRecoveryWindow();
     state.digital.entries.push({
       id:newId(), ts:Date.now(), date:todayKey(),
       trigger:urgeSelected.trigger, urgeType:urgeSelected.type, response:urgeSelected.response,
-      alternative: document.getElementById('urgeAltInput').value.trim()
+      alternative: document.getElementById('urgeAltInput').value.trim(),
+      bodySignals: urgeSelected.bodySignals, viaRescue: urgeViaRescue
     });
+    if(urgeSelected.response==='gave_in') state.digital.recoveryUntil = Date.now() + 2*3600000;
     saveState();
     closeView();
     recalcLifeScore(); renderHome();
     pulse(document.getElementById('digitalBento'));
+    if(cameBackFast) maybeShowRecoveryToast();
+    else if(urgeSelected.response==='resisted') maybeShowValueConnector(['discipline']);
   });
 }
-document.getElementById('digitalBento').addEventListener('click', openDigitalModal);
+document.getElementById('digitalBento').addEventListener('click', ()=> openDigitalModal());
+
+/* -------- silent wins: a private list of resisted urges, no sharing mechanism -------- */
+function openSilentWins(){
+  const wins = state.digital.entries.filter(e=>e.response==='resisted').sort((a,b)=>b.ts-a.ts);
+  const fmt = new Intl.DateTimeFormat(lang==='ar'?'ar':'en', {month:'short', day:'numeric'});
+  const list = wins.length ? wins.map(e=>`
+    <div class="rh-row">
+      <span class="rh-emoji">✅</span>
+      <div><div class="rh-date">${fmt.format(new Date(e.ts))}</div>
+      <div class="rh-text">${t('urge_trigger_'+e.trigger)} · ${t('urge_type_'+e.urgeType)}</div></div>
+    </div>`).join('') : `<p class="empty-note">${t('silent_wins_empty')}</p>`;
+  openView(`
+    <h2 style="margin-bottom:4px;">${t('silent_wins_title')}</h2>
+    <p style="color:var(--ink-soft);font-size:12.5px;margin:0 0 4px;">${t('silent_wins_sub')}</p>
+    <p style="font-size:12.5px;font-weight:800;margin:0 0 16px;">${t('silent_wins_count')(wins.length)}</p>
+    ${list}
+  `);
+}
+
+/* -------- rescue mode: intervene first, log after -------- */
+let rescueSecondsLeft = 90, rescueTimerHandle = null;
+function startRescue(){
+  rescueSecondsLeft = 90;
+  document.getElementById('rescueCountdown').textContent = rescueSecondsLeft;
+  document.getElementById('rescueOverlay').classList.remove('hidden');
+  clearInterval(rescueTimerHandle);
+  rescueTimerHandle = setInterval(()=>{
+    rescueSecondsLeft--;
+    document.getElementById('rescueCountdown').textContent = Math.max(rescueSecondsLeft,0);
+    if(rescueSecondsLeft<=0) finishRescue();
+  }, 1000);
+}
+function finishRescue(){
+  clearInterval(rescueTimerHandle);
+  document.getElementById('rescueOverlay').classList.add('hidden');
+  openDigitalModal({viaRescue:true});
+}
+document.getElementById('rescueFab').addEventListener('click', startRescue);
+document.getElementById('rescueSkipBtn').addEventListener('click', finishRescue);
 
 /* ============================= WHAT'S NEW (premium research digest) ============================= */
 function todayWhatsNewItem(){
@@ -571,7 +705,61 @@ function openPremiumModal(){
 document.getElementById('whatsNewCard').addEventListener('click', openWhatsNewModal);
 
 /* ============================= PATTERN DETECTION + WEEKLY REFLECTION ============================= */
+/* -------- cross-pillar correlation: does completing domain X actually track with fewer give-ins? -------- */
+function computeCorrelationInsight(){
+  const windowDays = 21;
+  const gaveInByDate = {};
+  for(let i=0;i<windowDays;i++){
+    const d = dateKeyOffset(-i);
+    gaveInByDate[d] = state.digital.entries.filter(e=>e.date===d && e.response==='gave_in').length;
+  }
+  let best = null;
+  DOMAINS.forEach(dom=>{
+    const doneVals=[], notDoneVals=[];
+    for(let i=0;i<windowDays;i++){
+      const d = dateKeyOffset(-i);
+      (state.performance[dom.key].history[d] ? doneVals : notDoneVals).push(gaveInByDate[d]);
+    }
+    if(doneVals.length<4 || notDoneVals.length<4) return;
+    const avgDone = doneVals.reduce((a,b)=>a+b,0)/doneVals.length;
+    const avgNot = notDoneVals.reduce((a,b)=>a+b,0)/notDoneVals.length;
+    const diff = avgNot - avgDone;
+    if(diff>=0.4 && (!best || diff>best.diff)) best = { domain:dom.key, diff };
+  });
+  return best;
+}
+function correlationText(insight){
+  return lang==='ar'
+    ? `بالأيام اللي تكمّل فيها "${t('dom_'+insight.domain+'_name')}"، عدد المرات اللي تستسلم فيها لرغباتك ينزل بشكل ملحوظ.`
+    : `On days you complete "${t('dom_'+insight.domain+'_name')}", how often you give in to urges drops noticeably.`;
+}
+/* -------- rhythm-aware nudge: contextual, shown only while the app is open (no background push) -------- */
+function currentTimePhase(){
+  const h = new Date().getHours();
+  return h>=21||h<5?'night':h<12?'morning':h<18?'afternoon':'evening';
+}
+function detectRiskTimePhase(){
+  const entries = state.digital.entries;
+  if(entries.length<5) return null;
+  const counts={morning:0,afternoon:0,evening:0,night:0};
+  entries.forEach(e=>{
+    const h=new Date(e.ts).getHours();
+    counts[h>=21||h<5?'night':h<12?'morning':h<18?'afternoon':'evening']++;
+  });
+  const top = Object.keys(counts).sort((a,b)=>counts[b]-counts[a])[0];
+  return counts[top] >= entries.length*0.4 ? top : null;
+}
+function renderRhythmNudge(){
+  const el = document.getElementById('rhythmNudgeCard'); if(!el) return;
+  const risk = detectRiskTimePhase();
+  if(risk && risk===currentTimePhase()){
+    el.style.display = 'block';
+    el.textContent = '🕐 ' + t('rhythm_nudge')(t('time_'+risk));
+  } else el.style.display = 'none';
+}
 function detectDominantPattern(){
+  const correlation = computeCorrelationInsight();
+  if(correlation) return { kind:'correlation', domain:correlation.domain };
   const windowMs = 14*86400000;
   const cutoff = Date.now() - windowMs;
   const urges = state.digital.entries.filter(e=>e.ts>=cutoff);
@@ -602,6 +790,7 @@ function shouldOfferReflection(){
 function generateReflection(){
   const p = detectDominantPattern();
   if(!p) return null;
+  if(p.kind==='correlation') return correlationText(p);
   if(p.kind==='urge'){
     const alt = URGE_ALT_SUGGESTIONS[p.trigger] || URGE_ALT_SUGGESTIONS.other;
     const timeLabel = t('time_'+p.timePhase);
@@ -683,10 +872,13 @@ document.getElementById('domainBack').addEventListener('click', ()=> showScreen(
 document.getElementById('domainDoneBtn').addEventListener('click', ()=>{
   if(!currentDomainKey) return;
   const wasDone = domainDoneToday(currentDomainKey);
+  const cameBackFast = !wasDone && consumeRecoveryWindow();
   markDomainDone(currentDomainKey);
   renderDomainScreen();
   renderHome();
   if(!wasDone) pulse(document.getElementById('domainDoneBtn'));
+  if(cameBackFast) maybeShowRecoveryToast();
+  else if(!wasDone) maybeShowValueConnector(DOMAIN_VALUE_MAP[currentDomainKey]);
 });
 
 /* ============================= INSIGHTS ============================= */
@@ -697,6 +889,12 @@ function renderInsights(){
   document.getElementById('insightsTodayText').textContent = lang==='ar'
     ? `نقاطك اليوم ${today.total} من 100.`
     : `Your score today is ${today.total} out of 100.`;
+
+  const corrCard = document.getElementById('correlationCard');
+  if(corrCard){
+    const insight = computeCorrelationInsight();
+    corrCard.innerHTML = `<p style="margin:0;font-size:12.5px;color:var(--ink-soft);line-height:1.6;">${insight ? correlationText(insight) : t('correlation_empty')}</p>`;
+  }
 
   const card = document.getElementById('breakdownCard');
   card.innerHTML = Object.keys(LIFE_SCORE_MAXES).map(k=>{
@@ -831,6 +1029,32 @@ function buildJournalMoodRow(){
     row.appendChild(btn);
   });
 }
+/* -------- voice-note journal (opt-in, browser speech recognition — see disclaimer) -------- */
+const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+let voiceRecognizer = null, voiceListening = false;
+function updateVoiceBtn(){
+  const btn = document.getElementById('journalVoiceBtn'); if(!btn) return;
+  btn.textContent = voiceListening ? '⏹️' : '🎙️';
+}
+if(SpeechRecognitionCtor){
+  const row = document.getElementById('journalVoiceRow'); if(row) row.style.display = 'flex';
+  voiceRecognizer = new SpeechRecognitionCtor();
+  voiceRecognizer.continuous = true;
+  voiceRecognizer.interimResults = false;
+  voiceRecognizer.onresult = e=>{
+    let transcript = '';
+    for(let i=e.resultIndex;i<e.results.length;i++) transcript += e.results[i][0].transcript;
+    const input = document.getElementById('journalInput');
+    input.value = input.value.trim() ? input.value.trim()+' '+transcript : transcript;
+  };
+  voiceRecognizer.onend = ()=>{ voiceListening=false; updateVoiceBtn(); };
+  voiceRecognizer.onerror = ()=>{ voiceListening=false; updateVoiceBtn(); };
+  document.getElementById('journalVoiceBtn').addEventListener('click', ()=>{
+    if(voiceListening){ voiceRecognizer.stop(); voiceListening=false; updateVoiceBtn(); return; }
+    try{ voiceRecognizer.lang = lang==='ar' ? 'ar-SA' : 'en-US'; voiceRecognizer.start(); voiceListening=true; updateVoiceBtn(); }catch(e){}
+  });
+}
+
 const JOURNAL_PROMPTS = {
   en: ["What's on my mind right now?", "One thing I'm grateful for", "What's stressing me out?", "A small win from today"],
   ar: ["شو في بالي هلأ؟", "شي وحد أنا ممتن له", "شو ضاغط علي؟", "انتصار صغير من اليوم"]
@@ -852,8 +1076,11 @@ document.getElementById('journalSaveBtn').addEventListener('click', ()=>{
   const val = document.getElementById('journalInput').value.trim();
   if(!val) return;
   const trigger = document.getElementById('journalTriggerInput').value.trim();
+  const cameBackFast = consumeRecoveryWindow();
   state.journal.push({ id: Date.now()+'-'+Math.random().toString(36).slice(2,7), date: todayKey(), ts: Date.now(), mood: journalSelectedMood, text: val, trigger });
   saveState();
+  if(cameBackFast) maybeShowRecoveryToast();
+  else maybeShowValueConnector(['growth']);
   document.getElementById('journalInput').value='';
   document.getElementById('journalTriggerInput').value='';
   journalSelectedMood=null; buildJournalMoodRow();
@@ -1148,6 +1375,7 @@ document.getElementById('settingsBtn').addEventListener('click', ()=>{ renderSet
 document.getElementById('settingsClose').addEventListener('click', ()=> settingsOverlay.classList.remove('active'));
 settingsOverlay.addEventListener('click', e=>{ if(e.target===settingsOverlay) settingsOverlay.classList.remove('active'); });
 document.getElementById('changeFocusBtn').addEventListener('click', ()=>{ settingsOverlay.classList.remove('active'); openFocusPicker(); });
+document.getElementById('changeValuesBtn').addEventListener('click', ()=>{ settingsOverlay.classList.remove('active'); openValuesPicker(); });
 document.getElementById('langToggle').addEventListener('click', ()=> setLang(lang==='ar'?'en':'ar'));
 document.getElementById('langSeg').querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=> setLang(b.dataset.lang)));
 document.getElementById('darkToggle').addEventListener('click', ()=>{
